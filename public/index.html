@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MCQM Live Ops Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
     --teal: #0f766e; --teal-light: #ccfbf1; --teal-bg: #f0fdfa;
@@ -112,10 +113,59 @@
 
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  /* Login overlay */
+  #login-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--gray-50);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999;
+  }
+  #login-overlay.hidden { display: none; }
+  .login-box {
+    background: #fff; border-radius: 12px; padding: 40px 32px;
+    max-width: 400px; width: 100%; box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  .login-box h1 { font-size: 22px; margin: 0 0 4px; text-align: center; color: var(--gray-900); }
+  .login-box .sub-text { text-align: center; color: var(--gray-500); font-size: 13px; margin-bottom: 24px; }
+  .login-box label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 4px; }
+  .login-box input { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 6px; font-size: 14px; box-sizing: border-box; margin-bottom: 12px; }
+  .login-box .login-btn { width: 100%; padding: 10px; font-size: 14px; background: var(--teal); color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+  .login-box .login-btn:hover { background: #0d6d65; }
+  .login-box .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .login-box .error-msg { background: var(--red-light); color: var(--red); padding: 8px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 12px; }
+  .login-box .toggle-link { text-align: center; margin-top: 16px; font-size: 13px; color: var(--gray-500); }
+  .login-box .toggle-link button { background: none; border: none; color: var(--teal); cursor: pointer; font-weight: 600; font-size: 13px; }
+  .auth-bar { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--gray-400); }
+  .auth-bar button { background: none; border: none; color: var(--gray-400); cursor: pointer; font-size: 10px; text-decoration: underline; }
 </style>
 </head>
 <body>
 
+<!-- Login Overlay -->
+<div id="login-overlay">
+  <div class="login-box">
+    <h1>MCQM Live Ops Dashboard</h1>
+    <div class="sub-text" id="login-subtitle">Sign in to continue</div>
+    <form id="login-form">
+      <div id="signup-name-field" style="display:none">
+        <label>Full Name</label>
+        <input type="text" id="login-name" placeholder="Jane Smith">
+      </div>
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="you@steadymd.com" required>
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" required>
+      <div id="login-error" class="error-msg" style="display:none"></div>
+      <button type="submit" class="login-btn" id="login-submit">Sign In</button>
+    </form>
+    <div class="toggle-link" id="login-toggle">
+      No account? <button onclick="toggleAuthMode()">Sign up</button>
+    </div>
+  </div>
+</div>
+
+<div id="app-content" style="display:none">
 <div class="header">
   <div class="top-bar">
     <div>
@@ -124,6 +174,7 @@
       <div class="badges" id="badges"></div>
     </div>
     <div class="refresh-info">
+      <div class="auth-bar" id="auth-bar"></div>
       <span class="status" id="refresh-status">Loading...</span>
       <button class="btn btn-teal" onclick="fetchData()">Refresh Now</button>
     </div>
@@ -142,8 +193,82 @@
 <div class="footer">
   MCQM Ops Dashboard | Live data from Google Sheets | Auto-refreshes every 60 minutes | MCQM = Patient Support Services
 </div>
+</div><!-- end #app-content -->
 
 <script>
+// ============================================================
+// SUPABASE AUTH
+// ============================================================
+const SUPABASE_URL = 'https://eeszygextbqglayglvfm.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_txIrKbYtv9kjSKXjQVJFbw_hzUsLNEK';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let authMode = 'login';
+let currentUser = null;
+
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  document.getElementById('signup-name-field').style.display = authMode === 'signup' ? 'block' : 'none';
+  document.getElementById('login-submit').textContent = authMode === 'login' ? 'Sign In' : 'Create Account';
+  document.getElementById('login-subtitle').textContent = authMode === 'login' ? 'Sign in to continue' : 'Create your account';
+  document.getElementById('login-toggle').innerHTML = authMode === 'login'
+    ? 'No account? <button onclick="toggleAuthMode()">Sign up</button>'
+    : 'Already have an account? <button onclick="toggleAuthMode()">Sign in</button>';
+  document.getElementById('login-error').style.display = 'none';
+}
+
+function showApp(user) {
+  currentUser = user;
+  document.getElementById('login-overlay').classList.add('hidden');
+  document.getElementById('app-content').style.display = '';
+  document.getElementById('auth-bar').innerHTML =
+    '<span>' + (user.email || '') + '</span>' +
+    '<button onclick="doSignOut()">Sign out</button>';
+  fetchData();
+}
+
+async function doSignOut() {
+  await sb.auth.signOut();
+  currentUser = null;
+  document.getElementById('login-overlay').classList.remove('hidden');
+  document.getElementById('app-content').style.display = 'none';
+}
+
+document.getElementById('login-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  const errorEl = document.getElementById('login-error');
+  const submitBtn = document.getElementById('login-submit');
+  errorEl.style.display = 'none';
+  submitBtn.disabled = true;
+  submitBtn.textContent = '...';
+
+  if (authMode === 'signup') {
+    const fullName = document.getElementById('login-name').value.trim();
+    if (!fullName) { errorEl.textContent = 'Full name is required'; errorEl.style.display = 'block'; submitBtn.disabled = false; submitBtn.textContent = 'Create Account'; return; }
+    const { data, error } = await sb.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+    if (error) { errorEl.textContent = error.message; errorEl.style.display = 'block'; submitBtn.disabled = false; submitBtn.textContent = 'Create Account'; return; }
+    if (data.user && !data.session) { errorEl.textContent = 'Check your email to confirm, then sign in.'; errorEl.style.display = 'block'; authMode = 'login'; toggleAuthMode(); submitBtn.disabled = false; return; }
+    showApp(data.user);
+  } else {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) { errorEl.textContent = error.message; errorEl.style.display = 'block'; submitBtn.disabled = false; submitBtn.textContent = 'Sign In'; return; }
+    showApp(data.user);
+  }
+});
+
+// Check existing session on load
+sb.auth.getSession().then(({ data: { session } }) => {
+  if (session?.user) {
+    showApp(session.user);
+  }
+});
+sb.auth.onAuthStateChange((event, session) => {
+  if (session?.user && !currentUser) showApp(session.user);
+  else if (!session?.user && currentUser) doSignOut();
+});
+
 // ============================================================
 // CONFIGURATION
 // ============================================================
@@ -788,7 +913,7 @@ function renderCoverageMap() {
 
 // ---- INIT ----
 renderTabs();
-fetchData();
+// fetchData() is called by showApp() after successful auth
 </script>
 </body>
 </html>
