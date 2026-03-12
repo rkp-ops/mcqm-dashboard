@@ -1,0 +1,8 @@
+{
+  "name": "mcqm-live-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "google-auth-library": "^9.0.0"
+  }
+}

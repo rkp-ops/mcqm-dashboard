@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCQM Live Ops Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --teal: #0f766e; --teal-light: #ccfbf1; --teal-bg: #f0fdfa;
+    --blue: #1d4ed8; --blue-light: #dbeafe;
+    --amber: #d97706; --amber-light: #fef3c7; --amber-bg: #fffbeb;
+    --red: #dc2626; --red-light: #fee2e2; --red-bg: #fef2f2;
+    --green: #059669; --green-light: #d1fae5; --green-bg: #ecfdf5;
+    --purple: #7c3aed; --purple-light: #ede9fe;
+    --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+    --gray-300: #d1d5db; --gray-400: #9ca3af; --gray-500: #6b7280;
+    --gray-600: #4b5563; --gray-700: #374151; --gray-800: #1f2937;
+    --gray-900: #111827;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--gray-50); color: var(--gray-900); }
+
+  .header { background: #fff; border-bottom: 1px solid var(--gray-200); padding: 16px 24px; }
+  .header h1 { font-size: 20px; font-weight: 700; }
+  .header .sub { font-size: 13px; color: var(--gray-500); margin-top: 2px; }
+  .header .badges { display: flex; gap: 8px; margin-top: 4px; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+  .badge-teal { background: var(--teal-light); color: var(--teal); }
+  .badge-blue { background: var(--blue-light); color: var(--blue); }
+  .badge-gray { background: var(--gray-100); color: var(--gray-600); }
+
+  .top-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .refresh-info { display: flex; align-items: center; gap: 10px; }
+  .refresh-info .status { font-size: 12px; color: var(--gray-400); }
+  .refresh-info .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot-green { background: var(--green); }
+  .dot-amber { background: var(--amber); }
+  .dot-red { background: var(--red); }
+  .btn { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--gray-200); background: #fff; font-size: 13px; cursor: pointer; font-weight: 500; }
+  .btn:hover { background: var(--gray-50); }
+  .btn-teal { background: var(--teal); color: #fff; border-color: var(--teal); }
+  .btn-teal:hover { background: #0d6960; }
+
+  .tabs { display: flex; gap: 4px; margin-top: 12px; flex-wrap: wrap; }
+  .tab { padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: var(--gray-600); }
+  .tab:hover { background: var(--gray-100); }
+  .tab.active { background: var(--teal); color: #fff; }
+
+  .main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+  .section { margin-bottom: 32px; }
+  .section h2 { font-size: 16px; font-weight: 700; color: var(--gray-800); border-bottom: 1px solid var(--gray-200); padding-bottom: 8px; margin-bottom: 16px; }
+  .section .note { font-size: 12px; color: var(--gray-500); margin-top: 8px; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .kpi { background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; padding: 16px; }
+  .kpi .label { font-size: 11px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi .value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+  .kpi .sub { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
+  .kpi .value.green { color: var(--green); }
+  .kpi .value.amber { color: var(--amber); }
+  .kpi .value.red { color: var(--red); }
+  .kpi .value.teal { color: var(--teal); }
+
+  .chart-container { background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .chart-container canvas { max-height: 320px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px; background: var(--gray-50); color: var(--gray-600); font-weight: 600; border-bottom: 2px solid var(--gray-200); }
+  td { padding: 8px; border-bottom: 1px solid var(--gray-100); }
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+  .font-bold { font-weight: 700; }
+  .text-red { color: var(--red); font-weight: 700; }
+  .text-amber { color: var(--amber); font-weight: 700; }
+  .text-green { color: var(--green); }
+  .mono { font-family: monospace; font-size: 12px; }
+
+  .info-box { border-radius: 8px; padding: 16px; margin-bottom: 16px; font-size: 13px; line-height: 1.6; }
+  .info-green { background: var(--green-bg); border: 1px solid #a7f3d0; color: #065f46; }
+  .info-red { background: var(--red-bg); border: 1px solid #fca5a5; color: #991b1b; }
+  .info-amber { background: var(--amber-bg); border: 1px solid #fcd34d; color: #92400e; }
+  .info-blue { background: #eff6ff; border: 1px solid #93c5fd; color: #1e40af; }
+  .info-purple { background: #f5f3ff; border: 1px solid #c4b5fd; color: #5b21b6; }
+  .info-yellow { background: #fefce8; border: 1px solid #fde047; color: #854d0e; }
+  .info-box p { margin-bottom: 6px; }
+
+  .heatmap { border-collapse: separate; border-spacing: 2px; }
+  .heatmap td, .heatmap th { padding: 3px 5px; font-size: 10px; text-align: center; min-width: 32px; border-radius: 3px; }
+  .heatmap th { background: transparent; color: var(--gray-400); font-weight: 400; }
+  .heatmap .day-label { text-align: left; font-weight: 600; color: var(--gray-700); padding-right: 6px; }
+
+  .coverage-table { border-collapse: separate; border-spacing: 2px; }
+  .coverage-table td, .coverage-table th { padding: 4px 6px; font-size: 11px; text-align: center; min-width: 50px; border-radius: 3px; }
+  .coverage-table th { background: transparent; color: var(--gray-400); font-weight: 400; font-size: 10px; }
+  .coverage-table .role-label { text-align: left; font-weight: 600; color: var(--gray-700); white-space: nowrap; padding-right: 8px; }
+
+  .loading { text-align: center; padding: 80px 20px; }
+  .loading h2 { color: var(--gray-600); margin-bottom: 8px; }
+  .loading p { color: var(--gray-400); font-size: 14px; }
+  .spinner { width: 40px; height: 40px; border: 4px solid var(--gray-200); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-box { background: var(--red-bg); border: 1px solid #fca5a5; border-radius: 8px; padding: 20px; text-align: center; color: #991b1b; }
+  .error-box h3 { margin-bottom: 8px; }
+  .error-box code { background: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+
+  .footer { border-top: 1px solid var(--gray-200); background: #fff; padding: 12px 24px; text-align: center; font-size: 11px; color: var(--gray-400); }
+
+  .hidden { display: none; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="top-bar">
+    <div>
+      <h1>MCQM Live Ops Dashboard</h1>
+      <div class="sub">MCQM = Patient Support Services | PSS = Partner Support Services | All times Central</div>
+      <div class="badges" id="badges"></div>
+    </div>
+    <div class="refresh-info">
+      <span class="status" id="refresh-status">Loading...</span>
+      <button class="btn btn-teal" onclick="fetchData()">Refresh Now</button>
+    </div>
+  </div>
+  <div class="tabs" id="tab-bar"></div>
+</div>
+
+<div class="main" id="main-content">
+  <div class="loading" id="loading-state">
+    <div class="spinner"></div>
+    <h2>Connecting to Google Sheets...</h2>
+    <p>Fetching live ticket data</p>
+  </div>
+</div>
+
+<div class="footer">
+  MCQM Ops Dashboard | Live data from Google Sheets | Auto-refreshes every 60 minutes | MCQM = Patient Support Services
+</div>
+
+<script>
+// ============================================================
+// CONFIGURATION
+// ============================================================
+const CONFIG = {
+  FETCH_URL: '/.netlify/functions/fetch-sheet',
+  REFRESH_INTERVAL_MS: 60 * 60 * 1000,  // 60 minutes
+};
+// ============================================================
+
+const TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'demand', label: 'Demand & Arrivals' },
+  { id: 'partners', label: 'Partners & Volume' },
+  { id: 'cycle', label: 'Cycle Time' },
+  { id: 'reopen', label: 'Reopens & Recontact' },
+  { id: 'team', label: 'Team & Staffing' },
+];
+
+let currentTab = 'overview';
+let DATA = null;
+let chartInstances = {};
+let refreshTimer = null;
+
+// ---- TAB BAR ----
+function renderTabs() {
+  const bar = document.getElementById('tab-bar');
+  bar.innerHTML = TABS.map(t =>
+    `<button class="tab ${t.id === currentTab ? 'active' : ''}" onclick="switchTab('${t.id}')">${t.label}</button>`
+  ).join('');
+}
+
+function switchTab(id) {
+  currentTab = id;
+  renderTabs();
+  renderContent();
+}
+
+// ---- DATA FETCH ----
+async function fetchData() {
+  const status = document.getElementById('refresh-status');
+  status.textContent = 'Fetching...';
+
+  if (CONFIG.FETCH_URL === 'NOT_SET') {
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('main-content').innerHTML = `
+      <div class="error-box" style="margin-top:40px;">
+        <h3>Function URL Not Configured</h3>
+        <p>Deploy this project to Netlify first. The serverless function handles authentication.</p>
+      </div>`;
+    return;
+  }
+
+  try {
+    const url = CONFIG.FETCH_URL;
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || `HTTP ${resp.status}`);
+    }
+    const json = await resp.json();
+    const rows = json.values;
+    if (!rows || rows.length < 2) throw new Error('Sheet returned no data rows');
+
+    const headers = rows[0];
+    const records = rows.slice(1).map(r => {
+      const obj = {};
+      headers.forEach((h, i) => { obj[h.trim()] = (r[i] || '').trim(); });
+      return obj;
+    });
+
+    DATA = processRecords(records);
+    status.innerHTML = `<span class="dot dot-green"></span> Live | ${DATA.summary.totalRows.toLocaleString()} rows | Updated ${new Date().toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true, timeZone:'America/Chicago' })} CT`;
+
+    document.getElementById('badges').innerHTML = `
+      <span class="badge badge-teal">MCQM: ${DATA.summary.projectKeys.MCQM?.toLocaleString() || 0}</span>
+      <span class="badge badge-blue">PSS: ${DATA.summary.projectKeys.PSS?.toLocaleString() || 0}</span>
+      <span class="badge badge-gray">OAC: ${DATA.summary.projectKeys.OAC || 0}</span>`;
+
+    renderTabs();
+    renderContent();
+
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(fetchData, CONFIG.REFRESH_INTERVAL_MS);
+
+  } catch (err) {
+    status.innerHTML = `<span class="dot dot-red"></span> Error`;
+    document.getElementById('main-content').innerHTML = `
+      <div class="error-box" style="margin-top:40px;">
+        <h3>Failed to load data</h3>
+        <p>${err.message}</p>
+        <p style="margin-top:12px; font-size:12px;">Check that the site is deployed to Netlify, the GOOGLE_SERVICE_ACCOUNT_JSON env variable is set, and the sheet is shared with the service account email.</p>
+      </div>`;
+  }
+}
+
+// ---- DATA PROCESSING ----
+function parseDate(s) {
+  if (!s) return null;
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+function median(arr) {
+  if (!arr.length) return 0;
+  const s = [...arr].sort((a,b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2;
+}
+
+function percentile(arr, p) {
+  if (!arr.length) return 0;
+  const s = [...arr].sort((a,b) => a - b);
+  const i = (p / 100) * (s.length - 1);
+  const lo = Math.floor(i), hi = Math.ceil(i);
+  return lo === hi ? s[lo] : s[lo] + (s[hi] - s[lo]) * (i - lo);
+}
+
+function processRecords(records) {
+  // Deduplicate to unique tickets (first row per Key)
+  const ticketMap = {};
+  const commentRows = [];
+
+  records.forEach(r => {
+    const key = r['Key'];
+    if (!key) return;
+    if (!ticketMap[key]) {
+      ticketMap[key] = {
+        key, status: r['Status'], created: parseDate(r['Created']),
+        resolved: parseDate(r['Resolved']), partner: r['Partner'],
+        issueType: r['Issue Type'], priority: r['Priority'],
+        assignee: r['Assignee'], reporter: r['Reporter'],
+        projectKey: key.replace(/-\d+$/, ''),
+      };
+    }
+    const cdt = parseDate(r['Comment.created']);
+    if (cdt) {
+      commentRows.push({ key, dt: cdt, internal: r['Comment.internal'], author: r['Comment.authorDisplayName'] });
+    }
+  });
+
+  const tickets = Object.values(ticketMap);
+  const total = tickets.length;
+
+  // Project keys
+  const pkCounts = {};
+  tickets.forEach(t => { pkCounts[t.projectKey] = (pkCounts[t.projectKey] || 0) + 1; });
+
+  // Statuses
+  const statusCounts = {};
+  tickets.forEach(t => { statusCounts[t.status] = (statusCounts[t.status] || 0) + 1; });
+  const openStatuses = ['Pending','Waiting for Customer','Reopened','In Progress','Waiting for support'];
+  const openCount = tickets.filter(t => openStatuses.includes(t.status)).length;
+  const reopenedCount = tickets.filter(t => t.status === 'Reopened').length;
+  const reopenedTickets = tickets.filter(t => t.status === 'Reopened');
+
+  // Resolved tickets & cycle time
+  const resolved = tickets.filter(t => t.resolved);
+  const cycleTimes = resolved.map(t => (t.resolved - t.created) / 3600000).filter(h => h >= 0);
+  const medCT = median(cycleTimes);
+  const p75CT = percentile(cycleTimes, 75);
+  const p90CT = percentile(cycleTimes, 90);
+
+  // Cycle time distribution
+  const ctBuckets = [
+    { label: '<30m', max: 0.5 }, { label: '30m-1h', max: 1 }, { label: '1-2h', max: 2 },
+    { label: '2-4h', max: 4 }, { label: '4-8h', max: 8 }, { label: '8-24h', max: 24 },
+    { label: '1-2d', max: 48 }, { label: '2-7d', max: 168 }, { label: '7d+', max: Infinity },
+  ];
+  const ctDist = ctBuckets.map(b => ({ bucket: b.label, tickets: 0 }));
+  cycleTimes.forEach(h => {
+    for (let i = 0; i < ctBuckets.length; i++) {
+      if (h <= ctBuckets[i].max) { ctDist[i].tickets++; break; }
+    }
+  });
+
+  // Monthly volume
+  const monthlyMap = {};
+  const monthlyPKMap = {};
+  tickets.forEach(t => {
+    if (!t.created) return;
+    const ym = t.created.toISOString().slice(0, 7);
+    monthlyMap[ym] = (monthlyMap[ym] || 0) + 1;
+    if (!monthlyPKMap[ym]) monthlyPKMap[ym] = {};
+    monthlyPKMap[ym][t.projectKey] = (monthlyPKMap[ym][t.projectKey] || 0) + 1;
+  });
+  const monthlyVolume = Object.entries(monthlyMap).sort((a,b) => a[0].localeCompare(b[0])).slice(-18).map(([m,v]) => ({month:m, tickets:v}));
+  const monthlyByPK = Object.entries(monthlyPKMap).sort((a,b) => a[0].localeCompare(b[0])).slice(-18).map(([m,pks]) => ({month:m, MCQM:pks.MCQM||0, PSS:pks.PSS||0, OAC:pks.OAC||0}));
+
+  // Daily volume last 60 days
+  const now = new Date();
+  const d60 = new Date(now - 60*86400000);
+  const dailyMap = {};
+  tickets.forEach(t => {
+    if (!t.created || t.created < d60) return;
+    const ds = t.created.toISOString().slice(0,10);
+    dailyMap[ds] = (dailyMap[ds] || 0) + 1;
+  });
+  const dailyVolume = Object.entries(dailyMap).sort((a,b) => a[0].localeCompare(b[0])).map(([d,v]) => ({date:d, tickets:v}));
+
+  // DOW
+  const dowNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dowOrder = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const dowMap = {};
+  dowOrder.forEach(d => dowMap[d] = 0);
+  tickets.forEach(t => { if (t.created) { dowMap[dowNames[t.created.getDay()]]++; } });
+  const dowVolume = dowOrder.map(d => ({day:d, tickets:dowMap[d]}));
+
+  // Hourly (CT = ET - 1; timestamps assumed ET)
+  const hourlyMap = {};
+  for (let h = 0; h < 24; h++) hourlyMap[h] = 0;
+  tickets.forEach(t => {
+    if (!t.created) return;
+    const ctH = (t.created.getHours() - 1 + 24) % 24;
+    hourlyMap[ctH]++;
+  });
+  const hlabel = h => `${h%12||12} ${h<12?'AM':'PM'}`;
+  const hourlyVolume = Array.from({length:24},(_,h) => ({hour:h, label:hlabel(h), tickets:hourlyMap[h]}));
+
+  // Business hours
+  const bizCount = tickets.filter(t => {
+    if (!t.created) return false;
+    const ctH = (t.created.getHours() - 1 + 24) % 24;
+    const dow = dowNames[t.created.getDay()];
+    return ctH >= 8 && ctH < 20 && !['Sat','Sun'].includes(dow);
+  }).length;
+  const bizPct = total > 0 ? (bizCount / total * 100) : 0;
+
+  // Heatmap (last 90 days)
+  const d90 = new Date(now - 90*86400000);
+  const heatmap = [];
+  const heatmapCounts = {};
+  dowOrder.forEach(d => { for (let h=0;h<24;h++) heatmapCounts[`${d}-${h}`] = 0; });
+  tickets.forEach(t => {
+    if (!t.created || t.created < d90) return;
+    const ctH = (t.created.getHours() - 1 + 24) % 24;
+    const dow = dowNames[t.created.getDay()];
+    heatmapCounts[`${dow}-${ctH}`]++;
+  });
+  dowOrder.forEach(d => {
+    for (let h=0;h<24;h++) {
+      heatmap.push({day:d, hour:h, label:hlabel(h), count: heatmapCounts[`${d}-${h}`]});
+    }
+  });
+
+  // Partner volume
+  const partnerMap = {};
+  tickets.forEach(t => { if (t.partner) partnerMap[t.partner] = (partnerMap[t.partner]||0)+1; });
+  const partnerVolume = Object.entries(partnerMap).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([p,v])=>({partner:p,tickets:v}));
+
+  // Priority
+  const prioMap = {};
+  tickets.forEach(t => { prioMap[t.priority] = (prioMap[t.priority]||0)+1; });
+  const priorityVolume = Object.entries(prioMap).sort((a,b)=>b[1]-a[1]).map(([p,v])=>({priority:p,tickets:v}));
+
+  // Assignee stats
+  const assigneeResolved = {};
+  resolved.forEach(t => {
+    if (!t.assignee) return;
+    if (!assigneeResolved[t.assignee]) assigneeResolved[t.assignee] = [];
+    assigneeResolved[t.assignee].push((t.resolved - t.created) / 3600000);
+  });
+  const assigneeStats = Object.entries(assigneeResolved)
+    .sort((a,b) => b[1].length - a[1].length).slice(0,12)
+    .map(([name, cts]) => ({name, tickets:cts.length, medianHrs:Math.round(median(cts)*10)/10, p75Hrs:Math.round(percentile(cts,75)*10)/10}));
+
+  // Partner cycle time
+  const partnerCTMap = {};
+  resolved.forEach(t => {
+    if (!t.partner) return;
+    if (!partnerCTMap[t.partner]) partnerCTMap[t.partner] = [];
+    partnerCTMap[t.partner].push((t.resolved - t.created) / 3600000);
+  });
+  const partnerCycleTime = Object.entries(partnerCTMap)
+    .sort((a,b) => b[1].length - a[1].length).slice(0,10)
+    .map(([p,cts]) => ({partner:p, tickets:cts.length, medianHrs:Math.round(median(cts)*10)/10, p75Hrs:Math.round(percentile(cts,75)*10)/10}));
+
+  // Post-resolution recontact proxy
+  const resolveMap = {};
+  resolved.forEach(t => { resolveMap[t.key] = { resolved: t.resolved, assignee: t.assignee, partner: t.partner }; });
+  const extComments = commentRows.filter(c => c.internal === 'FALSE' || c.internal === 'False' || c.internal === false);
+  const recontact24Keys = new Set();
+  const recontact72Keys = new Set();
+  const recontactByPartner = {};
+  const recontactByAssignee = {};
+
+  extComments.forEach(c => {
+    const rm = resolveMap[c.key];
+    if (!rm || !rm.resolved) return;
+    const delta = (c.dt - rm.resolved) / 3600000;
+    if (delta > 0 && delta <= 24) {
+      recontact24Keys.add(c.key);
+      if (rm.partner) { if (!recontactByPartner[rm.partner]) recontactByPartner[rm.partner] = new Set(); recontactByPartner[rm.partner].add(c.key); }
+      if (rm.assignee) { if (!recontactByAssignee[rm.assignee]) recontactByAssignee[rm.assignee] = new Set(); recontactByAssignee[rm.assignee].add(c.key); }
+    }
+    if (delta > 0 && delta <= 72) recontact72Keys.add(c.key);
+  });
+
+  const recontact24Pct = resolved.length > 0 ? (recontact24Keys.size / resolved.length * 100) : 0;
+  const recontact72Pct = resolved.length > 0 ? (recontact72Keys.size / resolved.length * 100) : 0;
+
+  // Partner recontact rates
+  const partnerResolvedMap = {};
+  resolved.forEach(t => { if (t.partner) partnerResolvedMap[t.partner] = (partnerResolvedMap[t.partner]||0)+1; });
+  const partnerRecontact = Object.entries(recontactByPartner)
+    .map(([p, keys]) => ({ partner: p, count: keys.size, total: partnerResolvedMap[p]||0, rate: partnerResolvedMap[p] ? Math.round(keys.size/partnerResolvedMap[p]*1000)/10 : 0 }))
+    .filter(x => x.total >= 5)
+    .sort((a,b) => b.rate - a.rate).slice(0, 12);
+
+  // Workload concentration
+  const sortedAssignees = Object.entries(assigneeResolved).sort((a,b) => b[1].length - a[1].length);
+  const top1Pct = sortedAssignees[0] ? (sortedAssignees[0][1].length / resolved.length * 100) : 0;
+  const top2Pct = sortedAssignees.slice(0,2).reduce((s,a) => s + a[1].length, 0) / resolved.length * 100;
+  const top3Pct = sortedAssignees.slice(0,3).reduce((s,a) => s + a[1].length, 0) / resolved.length * 100;
+
+  // Date range
+  const dates = tickets.map(t => t.created).filter(Boolean).sort((a,b) => a-b);
+  const dateRange = dates.length ? `${dates[0].toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})} - ${dates[dates.length-1].toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}` : 'N/A';
+
+  return {
+    summary: {
+      totalTickets: total, totalRows: records.length, projectKeys: pkCounts, dateRange,
+      resolvedCount: resolved.length, openCount, reopenedSnapshot: reopenedCount,
+      medianCycleHrs: Math.round(medCT*10)/10, p75CycleHrs: Math.round(p75CT*10)/10, p90CycleHrs: Math.round(p90CT*10)/10,
+      bizHoursPct: Math.round(bizPct*10)/10, recontact24hPct: Math.round(recontact24Pct*10)/10, recontact72hPct: Math.round(recontact72Pct*10)/10,
+      top1Name: sortedAssignees[0]?.[0] || 'N/A', top1Pct: Math.round(top1Pct*10)/10, top2Pct: Math.round(top2Pct*10)/10, top3Pct: Math.round(top3Pct*10)/10,
+    },
+    monthlyVolume, monthlyByPK, dailyVolume, dowVolume, hourlyVolume, heatmap,
+    partnerVolume, priorityVolume, assigneeStats, cycleTimeDist: ctDist,
+    partnerCycleTime, partnerRecontact, reopenedTickets, statusCounts,
+  };
+}
+
+// ---- CHART HELPERS ----
+function destroyCharts() {
+  Object.values(chartInstances).forEach(c => c.destroy());
+  chartInstances = {};
+}
+
+function makeChart(canvasId, config) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  chartInstances[canvasId] = new Chart(ctx, config);
+}
+
+// ---- RENDERING ----
+function renderContent() {
+  if (!DATA) return;
+  destroyCharts();
+  const el = document.getElementById('main-content');
+  el.innerHTML = '';
+
+  const s = DATA.summary;
+
+  if (currentTab === 'overview') {
+    el.innerHTML = `
+      <div class="section">
+        <h2>Key Performance Indicators</h2>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="label">Total Tickets</div><div class="value">${s.totalTickets.toLocaleString()}</div><div class="sub">Unique ticket keys</div></div>
+          <div class="kpi"><div class="label">Open Backlog</div><div class="value ${s.openCount>100?'amber':'green'}">${s.openCount}</div><div class="sub">Active tickets</div></div>
+          <div class="kpi"><div class="label">Median Cycle Time</div><div class="value">${s.medianCycleHrs}h</div><div class="sub">p75: ${s.p75CycleHrs}h | p90: ${s.p90CycleHrs}h</div></div>
+          <div class="kpi"><div class="label">Reopened (Snapshot)</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Currently in Reopened status</div></div>
+          <div class="kpi"><div class="label">Resolved</div><div class="value green">${s.resolvedCount.toLocaleString()}</div><div class="sub">${(s.resolvedCount/s.totalTickets*100).toFixed(1)}% resolution rate</div></div>
+          <div class="kpi"><div class="label">Recontact 24h</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">External comment after resolve</div></div>
+          <div class="kpi"><div class="label">Biz Hours Volume</div><div class="value">${s.bizHoursPct}%</div><div class="sub">8 AM - 8 PM CT, M-F</div></div>
+          <div class="kpi"><div class="label">After-Hours</div><div class="value amber">${(100-s.bizHoursPct).toFixed(1)}%</div><div class="sub">Outside coverage window</div></div>
+        </div>
+      </div>
+      <div class="section">
+        <h2>Monthly Volume Trend</h2>
+        <div class="chart-container"><canvas id="chart-monthly" height="260"></canvas></div>
+      </div>
+      <div class="section">
+        <h2>Workload Concentration</h2>
+        <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="kpi"><div class="label">Top 1 (${s.top1Name})</div><div class="value">${s.top1Pct}%</div></div>
+          <div class="kpi"><div class="label">Top 2 Agents</div><div class="value">${s.top2Pct}%</div></div>
+          <div class="kpi"><div class="label">Top 3 Agents</div><div class="value">${s.top3Pct}%</div></div>
+        </div>
+      </div>`;
+
+    makeChart('chart-monthly', {
+      type: 'bar',
+      data: {
+        labels: DATA.monthlyByPK.map(d => d.month),
+        datasets: [
+          { label: 'MCQM (Patient Support)', data: DATA.monthlyByPK.map(d => d.MCQM), backgroundColor: '#0f766e' },
+          { label: 'PSS (Partner Support)', data: DATA.monthlyByPK.map(d => d.PSS), backgroundColor: '#1d4ed8' },
+        ]
+      },
+      options: { responsive:true, plugins:{legend:{position:'bottom'}}, scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}} }
+    });
+  }
+
+  else if (currentTab === 'demand') {
+    el.innerHTML = `
+      <div class="section">
+        <h2>Daily Ticket Volume (Last 60 Days)</h2>
+        <div class="chart-container"><canvas id="chart-daily" height="240"></canvas></div>
+      </div>
+      <div class="section">
+        <h2>Arrivals by Day of Week</h2>
+        <div class="chart-container"><canvas id="chart-dow" height="200"></canvas></div>
+        <div class="note">Weekend = ${((DATA.dowVolume[5].tickets + DATA.dowVolume[6].tickets)/s.totalTickets*100).toFixed(1)}% of total volume.</div>
+      </div>
+      <div class="section">
+        <h2>Arrivals by Hour of Day (Central Time)</h2>
+        <div class="chart-container"><canvas id="chart-hourly" height="240"></canvas></div>
+        <div class="note">Green = staffed hours (8 AM - 8 PM CT). Amber = after-hours.</div>
+      </div>
+      <div class="section">
+        <h2>Day x Hour Heatmap (Last 90 Days, Central Time)</h2>
+        <div style="overflow-x:auto">${renderHeatmap()}</div>
+        <div class="note">Darker = higher volume. Coverage gap visible in evening hours.</div>
+      </div>`;
+
+    makeChart('chart-daily', {
+      type: 'line',
+      data: {
+        labels: DATA.dailyVolume.map(d => d.date.slice(5)),
+        datasets: [{ label:'Tickets', data: DATA.dailyVolume.map(d=>d.tickets), borderColor:'#0f766e', backgroundColor:'rgba(15,118,110,0.1)', fill:true, tension:0.3, pointRadius:1 }]
+      },
+      options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+    });
+
+    makeChart('chart-dow', {
+      type: 'bar',
+      data: {
+        labels: DATA.dowVolume.map(d=>d.day),
+        datasets: [{ data: DATA.dowVolume.map(d=>d.tickets), backgroundColor: DATA.dowVolume.map(d=>['Sat','Sun'].includes(d.day)?'#d97706':'#0f766e'), borderRadius:4 }]
+      },
+      options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+    });
+
+    makeChart('chart-hourly', {
+      type: 'bar',
+      data: {
+        labels: DATA.hourlyVolume.map(d=>d.label),
+        datasets: [{ data: DATA.hourlyVolume.map(d=>d.tickets), backgroundColor: DATA.hourlyVolume.map(d=>d.hour>=8&&d.hour<20?'#0f766e':'#d97706'), borderRadius:2 }]
+      },
+      options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+    });
+  }
+
+  else if (currentTab === 'partners') {
+    el.innerHTML = `
+      <div class="section">
+        <h2>Volume by Partner (Top 15)</h2>
+        <div class="chart-container"><canvas id="chart-partner" height="340"></canvas></div>
+      </div>
+      <div class="section">
+        <h2>Post-Resolve Recontact Rate by Partner (24h)</h2>
+        <div class="chart-container"><canvas id="chart-recontact-partner" height="280"></canvas></div>
+        <div class="note">Red = above 10%. Amber = above 7%.</div>
+      </div>
+      <div class="section">
+        <h2>Volume by Priority</h2>
+        <div class="chart-container"><canvas id="chart-priority" height="180"></canvas></div>
+      </div>`;
+
+    makeChart('chart-partner', {
+      type: 'bar',
+      data: {
+        labels: DATA.partnerVolume.map(d=>d.partner),
+        datasets: [{ data: DATA.partnerVolume.map(d=>d.tickets), backgroundColor:'#0f766e', borderRadius:4 }]
+      },
+      options: { indexAxis:'horizontal', responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+    });
+
+    makeChart('chart-recontact-partner', {
+      type: 'bar',
+      data: {
+        labels: DATA.partnerRecontact.map(d=>d.partner),
+        datasets: [{ data: DATA.partnerRecontact.map(d=>d.rate), backgroundColor: DATA.partnerRecontact.map(d=>d.rate>10?'#dc2626':d.rate>7?'#d97706':'#059669'), borderRadius:4 }]
+      },
+      options: { indexAxis:'horizontal', responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}, x:{ticks:{callback:v=>v+'%'}}} }
+    });
+
+    makeChart('chart-priority', {
+      type: 'bar',
+      data: {
+        labels: DATA.priorityVolume.map(d=>d.priority),
+        datasets: [{ data: DATA.priorityVolume.map(d=>d.tickets), backgroundColor:'#1d4ed8', borderRadius:4 }]
+      },
+      options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+    });
+  }
+
+  else if (currentTab === 'cycle') {
+    el.innerHTML = `
+      <div class="section">
+        <h2>Cycle Time Distribution (Created to Resolved)</h2>
+        <div class="chart-container"><canvas id="chart-ct" height="240"></canvas></div>
+      </div>
+      <div class="section">
+        <h2>Cycle Time by Partner</h2>
+        <table>
+          <thead><tr><th>Partner</th><th class="text-right">Resolved</th><th class="text-right">Median (hrs)</th><th class="text-right">p75 (hrs)</th></tr></thead>
+          <tbody>${DATA.partnerCycleTime.map(p => `<tr><td class="font-bold">${p.partner}</td><td class="text-right">${p.tickets.toLocaleString()}</td><td class="text-right ${p.medianHrs>4?'text-red':''}">${p.medianHrs}</td><td class="text-right ${p.p75Hrs>20?'text-red':''}">${p.p75Hrs}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>
+      <div class="section">
+        <h2>Assignee Performance</h2>
+        <table>
+          <thead><tr><th>Assignee</th><th class="text-right">Resolved</th><th class="text-right">Median (hrs)</th><th class="text-right">p75 (hrs)</th></tr></thead>
+          <tbody>${DATA.assigneeStats.map(a => `<tr><td class="font-bold">${a.name}</td><td class="text-right">${a.tickets.toLocaleString()}</td><td class="text-right ${a.medianHrs>10?'text-red':''}">${a.medianHrs}</td><td class="text-right ${a.p75Hrs>20?'text-red':''}">${a.p75Hrs}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>`;
+
+    makeChart('chart-ct', {
+      type: 'bar',
+      data: {
+        labels: DATA.cycleTimeDist.map(d=>d.bucket),
+        datasets: [{ data: DATA.cycleTimeDist.map(d=>d.tickets), backgroundColor:'#0f766e', borderRadius:4 }]
+      },
+      options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+    });
+  }
+
+  else if (currentTab === 'reopen') {
+    el.innerHTML = `
+      <div class="section">
+        <h2>Reopen & Recontact Analysis</h2>
+        <div class="info-yellow">
+          <p><strong>No changelog export available.</strong> Metrics below use snapshot status and post-resolution recontact proxies. Request a Jira changelog CSV export to enable full reopen event tracking.</p>
+        </div>
+        <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-top:12px">
+          <div class="kpi"><div class="label">Currently Reopened</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Snapshot status</div></div>
+          <div class="kpi"><div class="label">24h Recontact Rate</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">External comment after resolve</div></div>
+          <div class="kpi"><div class="label">72h Recontact Rate</div><div class="value amber">${s.recontact72hPct}%</div><div class="sub">External comment after resolve</div></div>
+        </div>
+      </div>
+      <div class="section">
+        <h2>Currently Reopened Tickets (${DATA.reopenedTickets.length})</h2>
+        <table>
+          <thead><tr><th>Key</th><th>Partner</th><th>Assignee</th><th class="text-right">Age (days)</th></tr></thead>
+          <tbody>${DATA.reopenedTickets.map(t => {
+            const age = t.created ? Math.round((new Date() - t.created)/86400000) : '?';
+            return `<tr><td class="mono font-bold">${t.key}</td><td>${t.partner||'--'}</td><td>${t.assignee||'--'}</td><td class="text-right ${age>5?'text-red':''}">${age}</td></tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>
+      <div class="section">
+        <h2>Recontact Rate by Partner (24h)</h2>
+        <table>
+          <thead><tr><th>Partner</th><th class="text-right">Resolved</th><th class="text-right">Recontacted</th><th class="text-right">Rate</th></tr></thead>
+          <tbody>${DATA.partnerRecontact.map(p => `<tr><td class="font-bold">${p.partner}</td><td class="text-right">${p.total.toLocaleString()}</td><td class="text-right">${p.count}</td><td class="text-right ${p.rate>10?'text-red':p.rate>7?'text-amber':''}">${p.rate}%</td></tr>`).join('')}</tbody>
+        </table>
+      </div>`;
+  }
+
+  else if (currentTab === 'team') {
+    el.innerHTML = `
+      <div class="section">
+        <h2>Recommended Staffing (Central Time, M-F)</h2>
+        <table>
+          <thead><tr><th>Role</th><th>Schedule (CT)</th><th>Rationale</th><th class="text-right">Weekly Hrs</th></tr></thead>
+          <tbody>
+            <tr><td class="font-bold">Zoie (salaried)</td><td>M-F, 9:00 AM - 5:00 PM CT</td><td style="font-size:12px;color:#6b7280">Covers midday ramp and early afternoon peak.</td><td class="text-right">40</td></tr>
+            <tr style="background:#eff6ff"><td class="font-bold">West Coast FTE</td><td>M-F, 12:00 PM - 8:30 PM CT<br><span style="font-size:11px;color:#6b7280">(10:00 AM - 6:30 PM PT)</span></td><td style="font-size:12px;color:#6b7280">Covers absolute peak (2-6 PM CT). 10 AM PT avoids early start.</td><td class="text-right">42.5</td></tr>
+            <tr style="background:#fffbeb"><td class="font-bold">Part-Time (CT)</td><td>M-F, 4:00 PM - 8:00 PM CT<br><span style="font-size:11px;color:#6b7280">+ Sun 2:00 - 8:00 PM CT</span></td><td style="font-size:12px;color:#6b7280">Evening coverage + Sunday peak. 26 hrs/wk.</td><td class="text-right">26</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section">
+        <h2>Coverage Map (M-F)</h2>
+        <div style="overflow-x:auto">${renderCoverageMap()}</div>
+        <div class="note">Peak overlap at 4-5 PM CT with 3 staff. Uncovered: 7-9 AM CT (very low volume).</div>
+      </div>
+      <div class="section">
+        <h2>Assignee Volume</h2>
+        <div class="chart-container"><canvas id="chart-assignee" height="300"></canvas></div>
+      </div>`;
+
+    makeChart('chart-assignee', {
+      type: 'bar',
+      data: {
+        labels: DATA.assigneeStats.map(a=>a.name),
+        datasets: [{ data: DATA.assigneeStats.map(a=>a.tickets), backgroundColor:'#0f766e', borderRadius:4 }]
+      },
+      options: { indexAxis:'horizontal', responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+    });
+  }
+}
+
+function renderHeatmap() {
+  const dowOrder = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const hlabel = h => `${h%12||12}${h<12?'a':'p'}`;
+  const maxCount = Math.max(...DATA.heatmap.map(h=>h.count));
+
+  let html = '<table class="heatmap"><thead><tr><th></th>';
+  for (let h=0;h<24;h++) html += `<th>${hlabel(h)}</th>`;
+  html += '</tr></thead><tbody>';
+
+  dowOrder.forEach(d => {
+    html += `<tr><td class="day-label">${d}</td>`;
+    for (let h=0;h<24;h++) {
+      const cell = DATA.heatmap.find(r=>r.day===d&&r.hour===h);
+      const count = cell ? cell.count : 0;
+      const intensity = maxCount > 0 ? count / maxCount : 0;
+      const bg = count === 0 ? '#f9fafb' : `rgba(15,118,110,${0.1+intensity*0.85})`;
+      const fg = intensity > 0.5 ? '#fff' : '#374151';
+      html += `<td style="background:${bg};color:${fg}">${count||''}</td>`;
+    }
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderCoverageMap() {
+  const hours = [7,8,9,10,11,12,13,14,15,16,17,18,19,20];
+  const hlabel = h => `${h%12||12} ${h<12?'AM':'PM'}`;
+  const zoie =    [0,0,1,1,1,1,1,1,1,1,0,0,0,0];
+  const wc =      [0,0,0,0,0,1,1,1,1,1,1,1,1,0];
+  const pt =      [0,0,0,0,0,0,0,0,0,1,1,1,1,0];
+  const totals =  zoie.map((v,i)=>v+wc[i]+pt[i]);
+  const colors = ['#0f766e','#1d4ed8','#d97706'];
+  const people = [{name:'Zoie',hrs:zoie},{name:'West Coast FTE',hrs:wc},{name:'Part-Time',hrs:pt}];
+
+  let html = '<table class="coverage-table"><thead><tr><th></th>';
+  hours.forEach(h => html += `<th>${hlabel(h)}</th>`);
+  html += '</tr></thead><tbody>';
+
+  people.forEach((p,pi) => {
+    html += `<tr><td class="role-label">${p.name}</td>`;
+    p.hrs.forEach(on => {
+      html += `<td style="background:${on?colors[pi]:'#f3f4f6'};color:${on?'#fff':'#d1d5db'};font-weight:600">${on?'ON':''}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '<tr style="border-top:2px solid #9ca3af"><td class="role-label" style="font-weight:700">Staff On</td>';
+  totals.forEach(n => {
+    const bg = n===0?'#fef2f2':n===1?'#fef9c3':n===2?'#ecfdf5':'#d1fae5';
+    const fg = n===0?'#dc2626':n===1?'#ca8a04':'#059669';
+    html += `<td style="background:${bg};color:${fg};font-weight:700">${n}</td>`;
+  });
+  html += '</tr></tbody></table>';
+  return html;
+}
+
+// ---- INIT ----
+renderTabs();
+fetchData();
+</script>
+</body>
+</html>
