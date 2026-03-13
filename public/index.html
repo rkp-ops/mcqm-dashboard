@@ -139,22 +139,25 @@
   .auth-bar { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--gray-400); }
   .auth-bar button { background: none; border: none; color: var(--gray-400); cursor: pointer; font-size: 10px; text-decoration: underline; }
 
-  /* Tooltips */
-  .tip { position: relative; cursor: help; border-bottom: 1px dotted var(--gray-400); }
-  .tip .tip-text {
-    visibility: hidden; opacity: 0; position: absolute; z-index: 100;
-    bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  /* Tooltips — JS-positioned fixed to avoid clipping by parent overflow */
+  .tip { cursor: help; border-bottom: 1px dotted var(--gray-400); }
+  .tip-float {
+    position: fixed; z-index: 99999; pointer-events: none;
     background: #1f2937; color: #fff; font-size: 12px; font-weight: 400;
     padding: 8px 12px; border-radius: 6px; white-space: normal;
     width: max-content; max-width: 300px; line-height: 1.5;
-    pointer-events: none; transition: opacity 0.15s;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    opacity: 0; transition: opacity 0.12s;
   }
-  .tip .tip-text::after {
+  .tip-float.show { opacity: 1; }
+  .tip-float::after {
     content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
     border: 5px solid transparent; border-top-color: #1f2937;
   }
-  .tip:hover .tip-text { visibility: visible; opacity: 1; }
+  .tip-float.below::after {
+    top: auto; bottom: 100%;
+    border-top-color: transparent; border-bottom-color: #1f2937;
+  }
 
   /* Definitions tab styles */
   .def-section { margin-bottom: 28px; }
@@ -890,9 +893,54 @@ function renderContent() {
 }
 
 // ---- TOOLTIP HELPER ----
+// Tooltip: uses data attributes + JS event delegation for fixed positioning
 function tip(label, text) {
-  return `<span class="tip">${label}<span class="tip-text">${text}</span></span>`;
+  // Escape quotes for attribute safety
+  const safeText = text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return `<span class="tip" data-tip="${safeText}">${label}</span>`;
 }
+
+// Global tooltip element + event delegation
+(function() {
+  const el = document.createElement('div');
+  el.className = 'tip-float';
+  el.id = 'global-tip';
+  document.body.appendChild(el);
+
+  document.addEventListener('mouseenter', function(e) {
+    const trigger = e.target.closest('.tip[data-tip]');
+    if (!trigger) return;
+    const text = trigger.getAttribute('data-tip');
+    if (!text) return;
+
+    el.textContent = text;
+    el.classList.remove('below');
+    el.classList.add('show');
+
+    // Position after content is set
+    requestAnimationFrame(function() {
+      const rect = trigger.getBoundingClientRect();
+      const tipRect = el.getBoundingClientRect();
+      let top = rect.top - tipRect.height - 8;
+      let left = rect.left + rect.width / 2 - tipRect.width / 2;
+      let below = false;
+
+      if (top < 4) { top = rect.bottom + 8; below = true; }
+      if (left < 4) left = 4;
+      if (left + tipRect.width > window.innerWidth - 4) left = window.innerWidth - tipRect.width - 4;
+
+      el.style.top = top + 'px';
+      el.style.left = left + 'px';
+      if (below) el.classList.add('below');
+    });
+  }, true);
+
+  document.addEventListener('mouseleave', function(e) {
+    const trigger = e.target.closest('.tip[data-tip]');
+    if (!trigger) return;
+    el.classList.remove('show', 'below');
+  }, true);
+})();
 
 // ---- DEFINITIONS TAB ----
 function renderDefinitions() {
