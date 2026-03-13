@@ -97,6 +97,14 @@
   .coverage-table th { background: transparent; color: var(--gray-400); font-weight: 400; font-size: 10px; }
   .coverage-table .role-label { text-align: left; font-weight: 600; color: var(--gray-700); white-space: nowrap; padding-right: 8px; }
 
+  .filter-bar { display: flex; gap: 6px; align-items: center; margin-top: 10px; flex-wrap: wrap; padding: 0; }
+  .filter-btn { padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--gray-200); background: #fff; color: var(--gray-600); }
+  .filter-btn:hover { background: var(--gray-50); }
+  .filter-btn.active { background: var(--teal); color: #fff; border-color: var(--teal); }
+  .filter-dates { display: flex; gap: 6px; align-items: center; }
+  .filter-dates input[type="date"] { padding: 3px 8px; border-radius: 6px; border: 1px solid var(--gray-200); font-size: 12px; color: var(--gray-700); }
+  .filter-dates label { font-size: 12px; color: var(--gray-500); }
+
   .loading { text-align: center; padding: 80px 20px; }
   .loading h2 { color: var(--gray-600); margin-bottom: 8px; }
   .loading p { color: var(--gray-400); font-size: 14px; }
@@ -114,91 +122,41 @@
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
 
-  /* Login overlay */
-  #login-overlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: var(--gray-50);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 9999;
-  }
-  #login-overlay.hidden { display: none; }
-  .login-box {
-    background: #fff; border-radius: 12px; padding: 40px 32px;
-    max-width: 400px; width: 100%; box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-  }
-  .login-box h1 { font-size: 22px; margin: 0 0 4px; text-align: center; color: var(--gray-900); }
-  .login-box .sub-text { text-align: center; color: var(--gray-500); font-size: 13px; margin-bottom: 24px; }
-  .login-box label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 4px; }
-  .login-box input { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 6px; font-size: 14px; box-sizing: border-box; margin-bottom: 12px; }
-  .login-box .login-btn { width: 100%; padding: 10px; font-size: 14px; background: var(--teal); color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
-  .login-box .login-btn:hover { background: #0d6d65; }
-  .login-box .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .login-box .error-msg { background: var(--red-light); color: var(--red); padding: 8px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 12px; }
-  .login-box .toggle-link { text-align: center; margin-top: 16px; font-size: 13px; color: var(--gray-500); }
-  .login-box .toggle-link button { background: none; border: none; color: var(--teal); cursor: pointer; font-weight: 600; font-size: 13px; }
-  .auth-bar { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--gray-400); }
-  .auth-bar button { background: none; border: none; color: var(--gray-400); cursor: pointer; font-size: 10px; text-decoration: underline; }
-
-  /* Tooltips — JS-positioned fixed to avoid clipping by parent overflow */
-  .tip { cursor: help; border-bottom: 1px dotted var(--gray-400); }
-  .tip-float {
-    position: fixed; z-index: 99999; pointer-events: none;
-    background: #1f2937; color: #fff; font-size: 12px; font-weight: 400;
-    padding: 8px 12px; border-radius: 6px; white-space: normal;
-    width: max-content; max-width: 300px; line-height: 1.5;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-    opacity: 0; transition: opacity 0.12s;
-  }
-  .tip-float.show { opacity: 1; }
-  .tip-float::after {
-    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-    border: 5px solid transparent; border-top-color: #1f2937;
-  }
-  .tip-float.below::after {
-    top: auto; bottom: 100%;
-    border-top-color: transparent; border-bottom-color: #1f2937;
-  }
-
-  /* Definitions tab styles */
-  .def-section { margin-bottom: 28px; }
-  .def-section h3 { font-size: 15px; font-weight: 700; color: var(--gray-800); margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--gray-200); }
-  .def-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 16px; }
-  .def-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; padding: 16px; }
-  .def-card .def-title { font-size: 13px; font-weight: 700; color: var(--teal); margin-bottom: 6px; }
-  .def-card .def-formula { font-family: monospace; font-size: 11px; background: var(--gray-50); padding: 4px 8px; border-radius: 4px; margin-bottom: 6px; color: var(--gray-700); }
-  .def-card .def-body { font-size: 12px; color: var(--gray-600); line-height: 1.6; }
-  .legend-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; }
-  .legend-table th { text-align: left; padding: 8px; background: var(--gray-50); color: var(--gray-600); font-weight: 600; border-bottom: 2px solid var(--gray-200); }
-  .legend-table td { padding: 8px; border-bottom: 1px solid var(--gray-100); vertical-align: top; }
-  .legend-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; }
+  /* Schedule tab */
+  .sched-timeline { background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; padding: 16px; overflow-x: auto; }
+  .sched-grid { display: grid; grid-template-columns: 56px 1fr; min-width: 640px; }
+  .sched-hour-headers { display: flex; position: relative; height: 20px; margin-bottom: 4px; }
+  .sched-hour-label { position: absolute; font-size: 10px; color: var(--gray-400); transform: translateX(-50%); white-space: nowrap; }
+  .sched-day-label { font-size: 12px; font-weight: 600; color: var(--gray-700); display: flex; align-items: center; padding-right: 8px; }
+  .sched-day-label.weekend { color: var(--gray-400); }
+  .sched-day-track { position: relative; height: 48px; background: var(--gray-50); border-radius: 4px; margin: 1px 0; border: 1px solid var(--gray-100); }
+  .sched-coverage-bg { position: absolute; top: 0; bottom: 0; background: rgba(15,118,110,0.04); border-radius: 4px; }
+  .sched-demand-cell { position: absolute; top: 0; bottom: 0; border-right: 1px solid rgba(0,0,0,0.03); }
+  .sched-gridline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--gray-100); }
+  .sched-bar { position: absolute; height: 13px; border-radius: 3px; display: flex; align-items: center; padding: 0 4px; font-size: 10px; font-weight: 600; cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; transition: opacity 0.15s; border: 1px solid transparent; }
+  .sched-bar:hover { opacity: 0.85; }
+  .sched-bar.teal { background: rgba(15,118,110,0.15); color: var(--teal); border-color: rgba(15,118,110,0.3); }
+  .sched-bar.blue { background: rgba(29,78,216,0.12); color: var(--blue); border-color: rgba(29,78,216,0.25); }
+  .sched-bar.amber { background: rgba(217,119,6,0.12); color: var(--amber); border-color: rgba(217,119,6,0.25); }
+  .sched-bar .bar-accent { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 3px 0 0 3px; }
+  .sched-bar.teal .bar-accent { background: var(--teal); }
+  .sched-bar.blue .bar-accent { background: var(--blue); }
+  .sched-bar.amber .bar-accent { background: var(--amber); }
+  .sched-bar .bar-time { font-size: 9px; margin-left: 4px; opacity: 0.7; font-family: monospace; }
+  .sched-week-tabs { display: flex; gap: 6px; margin-top: 8px; }
+  .sched-hours-bar { height: 6px; border-radius: 3px; background: var(--gray-100); overflow: hidden; margin-top: 6px; }
+  .sched-hours-fill { height: 100%; border-radius: 3px; }
+  .sched-hours-fill.teal { background: var(--teal); }
+  .sched-hours-fill.blue { background: var(--blue); }
+  .sched-hours-fill.amber { background: var(--amber); }
+  .sched-popover { position: absolute; z-index: 10; background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-width: 200px; }
+  .sched-popover select { padding: 4px 8px; border-radius: 4px; border: 1px solid var(--gray-200); font-size: 12px; }
+  .sched-popover label { font-size: 11px; color: var(--gray-500); font-weight: 600; display: block; margin-bottom: 2px; }
+  .sched-off-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 11px; color: var(--gray-400); font-style: italic; }
 </style>
 </head>
 <body>
 
-<!-- Login Overlay -->
-<div id="login-overlay">
-  <div class="login-box">
-    <h1>MCQM Live Ops Dashboard</h1>
-    <div class="sub-text" id="login-subtitle">Sign in to continue</div>
-    <form id="login-form">
-      <div id="signup-name-field" style="display:none">
-        <label>Full Name</label>
-        <input type="text" id="login-name" placeholder="Jane Smith">
-      </div>
-      <label>Email</label>
-      <input type="email" id="login-email" placeholder="you@steadymd.com" required>
-      <label>Password</label>
-      <input type="password" id="login-password" placeholder="••••••••" required>
-      <div id="login-error" class="error-msg" style="display:none"></div>
-      <button type="submit" class="login-btn" id="login-submit">Sign In</button>
-    </form>
-    <div class="toggle-link" id="login-toggle">
-      No account? <button onclick="toggleAuthMode()">Sign up</button>
-    </div>
-  </div>
-</div>
-
-<div id="app-content" style="display:none">
 <div class="header">
   <div class="top-bar">
     <div>
@@ -207,107 +165,51 @@
       <div class="badges" id="badges"></div>
     </div>
     <div class="refresh-info">
-      <div class="auth-bar" id="auth-bar"></div>
       <span class="status" id="refresh-status">Loading...</span>
       <button class="btn btn-teal" onclick="fetchData()">Refresh Now</button>
     </div>
   </div>
   <div class="tabs" id="tab-bar"></div>
+  <div class="filter-bar" id="filter-bar" style="display:none">
+    <button class="filter-btn active" onclick="setDateFilter('all')">All Time</button>
+    <button class="filter-btn" onclick="setDateFilter('mtd')">MTD</button>
+    <button class="filter-btn" onclick="setDateFilter('7')">Last 7 Days</button>
+    <button class="filter-btn" onclick="setDateFilter('30')">Last 30 Days</button>
+    <button class="filter-btn" onclick="setDateFilter('90')">Last 90 Days</button>
+    <button class="filter-btn" onclick="setDateFilter('custom')">Custom</button>
+    <div class="filter-dates" id="custom-dates" style="display:none">
+      <label>From</label><input type="date" id="filter-from" onchange="applyCustomFilter()">
+      <label>To</label><input type="date" id="filter-to" onchange="applyCustomFilter()">
+    </div>
+    <span style="width:1px;height:20px;background:var(--gray-300);margin:0 4px"></span>
+    <button class="filter-btn active" onclick="toggleAllProjects()" id="proj-all-btn">All Projects</button>
+    <button class="filter-btn active" data-proj="PSS" onclick="toggleProject('PSS')">PSS</button>
+    <button class="filter-btn active" data-proj="MCQM" onclick="toggleProject('MCQM')">MCQM</button>
+    <button class="filter-btn active" data-proj="FHPS" onclick="toggleProject('FHPS')">FHPS</button>
+    <button class="filter-btn active" data-proj="OAC" onclick="toggleProject('OAC')">OAC</button>
+  </div>
 </div>
 
 <div class="main" id="main-content">
   <div class="loading" id="loading-state">
     <div class="spinner"></div>
-    <h2>Connecting to Google Sheets...</h2>
-    <p>Fetching live ticket data</p>
+    <h2>Connecting to Jira API...</h2>
+    <p>Fetching live ticket data from PSS, MCQM, FHPS, OAC</p>
   </div>
 </div>
 
 <div class="footer">
-  MCQM Ops Dashboard | Live data from Google Sheets | Auto-refreshes every 60 minutes | MCQM = Patient Support Services
+  MCQM Ops Dashboard | Live data from Jira API | Auto-refreshes every 5 minutes | MCQM = Patient Support Services
 </div>
-</div><!-- end #app-content -->
 
 <script>
 // ============================================================
-// SUPABASE AUTH
-// ============================================================
-const SUPABASE_URL = 'https://eeszygextbqglayglvfm.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_txIrKbYtv9kjSKXjQVJFbw_hzUsLNEK';
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-let authMode = 'login';
-let currentUser = null;
-
-function toggleAuthMode() {
-  authMode = authMode === 'login' ? 'signup' : 'login';
-  document.getElementById('signup-name-field').style.display = authMode === 'signup' ? 'block' : 'none';
-  document.getElementById('login-submit').textContent = authMode === 'login' ? 'Sign In' : 'Create Account';
-  document.getElementById('login-subtitle').textContent = authMode === 'login' ? 'Sign in to continue' : 'Create your account';
-  document.getElementById('login-toggle').innerHTML = authMode === 'login'
-    ? 'No account? <button onclick="toggleAuthMode()">Sign up</button>'
-    : 'Already have an account? <button onclick="toggleAuthMode()">Sign in</button>';
-  document.getElementById('login-error').style.display = 'none';
-}
-
-function showApp(user) {
-  currentUser = user;
-  document.getElementById('login-overlay').classList.add('hidden');
-  document.getElementById('app-content').style.display = '';
-  document.getElementById('auth-bar').innerHTML =
-    '<span>' + (user.email || '') + '</span>' +
-    '<button onclick="doSignOut()">Sign out</button>';
-  fetchData();
-}
-
-async function doSignOut() {
-  await sb.auth.signOut();
-  currentUser = null;
-  document.getElementById('login-overlay').classList.remove('hidden');
-  document.getElementById('app-content').style.display = 'none';
-}
-
-document.getElementById('login-form').addEventListener('submit', async function(e) {
-  e.preventDefault();
-  const email = document.getElementById('login-email').value;
-  const password = document.getElementById('login-password').value;
-  const errorEl = document.getElementById('login-error');
-  const submitBtn = document.getElementById('login-submit');
-  errorEl.style.display = 'none';
-  submitBtn.disabled = true;
-  submitBtn.textContent = '...';
-
-  if (authMode === 'signup') {
-    const fullName = document.getElementById('login-name').value.trim();
-    if (!fullName) { errorEl.textContent = 'Full name is required'; errorEl.style.display = 'block'; submitBtn.disabled = false; submitBtn.textContent = 'Create Account'; return; }
-    const { data, error } = await sb.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
-    if (error) { errorEl.textContent = error.message; errorEl.style.display = 'block'; submitBtn.disabled = false; submitBtn.textContent = 'Create Account'; return; }
-    if (data.user && !data.session) { errorEl.textContent = 'Check your email to confirm, then sign in.'; errorEl.style.display = 'block'; authMode = 'login'; toggleAuthMode(); submitBtn.disabled = false; return; }
-    showApp(data.user);
-  } else {
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
-    if (error) { errorEl.textContent = error.message; errorEl.style.display = 'block'; submitBtn.disabled = false; submitBtn.textContent = 'Sign In'; return; }
-    showApp(data.user);
-  }
-});
-
-// Check existing session on load
-sb.auth.getSession().then(({ data: { session } }) => {
-  if (session?.user) {
-    showApp(session.user);
-  }
-});
-sb.auth.onAuthStateChange((event, session) => {
-  if (session?.user && !currentUser) showApp(session.user);
-  else if (!session?.user && currentUser) doSignOut();
-});
-
-// ============================================================
 // CONFIGURATION
 // ============================================================
+const API_BASE = '/api/jira-proxy';
 const CONFIG = {
-  FETCH_URL: '/.netlify/functions/fetch-sheet',
-  REFRESH_INTERVAL_MS: 60 * 60 * 1000,  // 60 minutes
+  FETCH_URL: API_BASE,
+  REFRESH_INTERVAL_MS: 5 * 60 * 1000,  // 5 minutes (live Jira data)
 };
 // ============================================================
 
@@ -318,13 +220,42 @@ const TABS = [
   { id: 'cycle', label: 'Cycle Time' },
   { id: 'reopen', label: 'Reopens & Recontact' },
   { id: 'team', label: 'Team & Staffing' },
-  { id: 'definitions', label: '\u{1F4D6} Definitions' },
+  { id: 'schedule', label: 'Schedule' },
 ];
 
 let currentTab = 'overview';
 let DATA = null;
+let ALL_TIME_DATA = null;  // Cache of unfiltered server response
+let currentFilter = 'all';
 let chartInstances = {};
 let refreshTimer = null;
+let RAW_TICKETS = null; // All tickets from API, unfiltered
+const ALL_PROJECTS = ['PSS','MCQM','FHPS','OAC'];
+let selectedProjects = new Set(ALL_PROJECTS);
+
+// ---- SCHEDULE CONFIG & STATE ----
+const SCHED_CONFIG = { weekStart: 'Mon' }; // 'Mon' (Mon-Sun) or 'Sun' (Sun-Sat)
+const SCHED_DAYS_MON = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const SCHED_DAYS_SUN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const SCHED_RANGE = { start: 7, end: 21 }; // timeline display range
+const SCHED_COVERAGE = { start: 8, end: 20 }; // required coverage window
+
+const STAFF = [
+  { name: 'Zoie', color: 'teal', tz: 'Central',
+    baseStart: 9, baseEnd: 17, flexHours: 1,
+    fixedDaysOff: ['Sat','Sun'], minDaysOff: 2, maxHrs: null, salaried: true },
+  { name: 'Brionna', color: 'blue', tz: 'Pacific',
+    baseStart: 12, baseEnd: 20.5, flexHours: null,
+    fixedDaysOff: [], minDaysOff: 2, maxHrs: 46, salaried: false },
+  { name: 'Bella', color: 'amber', tz: 'Central',
+    baseStart: 8, baseEnd: 16, flexHours: null,
+    fixedDaysOff: [], minDaysOff: 2, maxHrs: 35, salaried: false },
+];
+
+let currentScheduleWeek = 0;
+let generatedSchedule = null;
+let scheduleOverrides = {};
+let schedEditOpen = null; // tracks open edit popover
 
 // ---- TAB BAR ----
 function renderTabs() {
@@ -363,23 +294,48 @@ async function fetchData() {
       throw new Error(err.error || `HTTP ${resp.status}`);
     }
     const json = await resp.json();
-    const rows = json.values;
-    if (!rows || rows.length < 2) throw new Error('Sheet returned no data rows');
 
-    const headers = rows[0];
-    const records = rows.slice(1).map(r => {
-      const obj = {};
-      headers.forEach((h, i) => { obj[h.trim()] = (r[i] || '').trim(); });
-      return obj;
-    });
+    // Server returns pre-computed metrics
+    generatedSchedule = null; // Reset schedule to regenerate with fresh data
+    if (json.computed) {
+      DATA = json;
+      ALL_TIME_DATA = json;  // Cache unfiltered data
+    } else if (json.values) {
+      // Fallback: raw sheet data
+      const rows = json.values;
+      if (!rows || rows.length < 2) throw new Error('Sheet returned no data rows');
+      const headers = rows[0];
+      const records = rows.slice(1).map(r => {
+        const obj = {};
+        headers.forEach((h, i) => { obj[h.trim()] = (r[i] || '').trim(); });
+        return obj;
+      });
+      DATA = processRecords(records);
+      ALL_TIME_DATA = DATA;  // Cache unfiltered data
+    }
 
-    DATA = processRecords(records);
+    // Show filter bar now that data is loaded
+    document.getElementById('filter-bar').style.display = 'flex';
+
     status.innerHTML = `<span class="dot dot-green"></span> Live | ${DATA.summary.totalRows.toLocaleString()} rows | Updated ${new Date().toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true, timeZone:'America/Chicago' })} CT`;
 
+    const mtd = DATA.summary.mtdByPK || {};
     document.getElementById('badges').innerHTML = `
-      <span class="badge badge-teal">MCQM: ${DATA.summary.projectKeys.MCQM?.toLocaleString() || 0}</span>
-      <span class="badge badge-blue">PSS: ${DATA.summary.projectKeys.PSS?.toLocaleString() || 0}</span>
-      <span class="badge badge-gray">OAC: ${DATA.summary.projectKeys.OAC || 0}</span>`;
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:11px;font-weight:600;color:#6b7280">All-Time:</span>
+        <span class="badge badge-teal">MCQM: ${DATA.summary.projectKeys.MCQM?.toLocaleString() || 0}</span>
+        <span class="badge badge-blue">PSS: ${DATA.summary.projectKeys.PSS?.toLocaleString() || 0}</span>
+        <span class="badge badge-gray">FHPS: ${DATA.summary.projectKeys.FHPS?.toLocaleString() || 0}</span>
+        <span class="badge badge-gray">OAC: ${DATA.summary.projectKeys.OAC?.toLocaleString() || 0}</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px">
+        <span style="font-size:11px;font-weight:600;color:#6b7280">MTD:</span>
+        <span class="badge badge-teal">MCQM: ${(mtd.MCQM || 0).toLocaleString()}</span>
+        <span class="badge badge-blue">PSS: ${(mtd.PSS || 0).toLocaleString()}</span>
+        <span class="badge badge-gray">FHPS: ${(mtd.FHPS || 0).toLocaleString()}</span>
+        <span class="badge badge-gray">OAC: ${(mtd.OAC || 0).toLocaleString()}</span>
+        <span class="badge badge-gray">Total: ${(DATA.summary.mtdTotal || 0).toLocaleString()}</span>
+      </div>`;
 
     renderTabs();
     renderContent();
@@ -393,7 +349,7 @@ async function fetchData() {
       <div class="error-box" style="margin-top:40px;">
         <h3>Failed to load data</h3>
         <p>${err.message}</p>
-        <p style="margin-top:12px; font-size:12px;">Check that the site is deployed to Netlify, the GOOGLE_SERVICE_ACCOUNT_JSON env variable is set, and the sheet is shared with the service account email.</p>
+        <p style="margin-top:12px; font-size:12px;">Check that the site is deployed to Netlify and the JIRA_EMAIL and JIRA_TOKEN env variables are set.</p>
       </div>`;
   }
 }
@@ -489,7 +445,7 @@ function processRecords(records) {
     monthlyPKMap[ym][t.projectKey] = (monthlyPKMap[ym][t.projectKey] || 0) + 1;
   });
   const monthlyVolume = Object.entries(monthlyMap).sort((a,b) => a[0].localeCompare(b[0])).slice(-18).map(([m,v]) => ({month:m, tickets:v}));
-  const monthlyByPK = Object.entries(monthlyPKMap).sort((a,b) => a[0].localeCompare(b[0])).slice(-18).map(([m,pks]) => ({month:m, MCQM:pks.MCQM||0, PSS:pks.PSS||0, OAC:pks.OAC||0}));
+  const monthlyByPK = Object.entries(monthlyPKMap).sort((a,b) => a[0].localeCompare(b[0])).slice(-18).map(([m,pks]) => ({month:m, MCQM:pks.MCQM||0, PSS:pks.PSS||0, FHPS:pks.FHPS||0, OAC:pks.OAC||0}));
 
   // Daily volume last 60 days
   const now = new Date();
@@ -611,6 +567,19 @@ function processRecords(records) {
     .filter(x => x.total >= 5)
     .sort((a,b) => b.rate - a.rate).slice(0, 12);
 
+  // Assignee volume (all tickets, not just resolved)
+  const assigneeAllMap = {};
+  tickets.forEach(t => { if (t.assignee) assigneeAllMap[t.assignee] = (assigneeAllMap[t.assignee]||0)+1; });
+  const assigneeVolume = Object.entries(assigneeAllMap).sort((a,b) => b[1]-a[1]).slice(0,12)
+    .map(([name, count]) => ({name, tickets:count}));
+
+  // MTD stats (month-to-date)
+  const mtdStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const mtdTickets = tickets.filter(t => t.created && t.created >= mtdStart);
+  const mtdByPK = {};
+  mtdTickets.forEach(t => { mtdByPK[t.projectKey] = (mtdByPK[t.projectKey]||0)+1; });
+  const mtdTotal = mtdTickets.length;
+
   // Workload concentration
   const sortedAssignees = Object.entries(assigneeResolved).sort((a,b) => b[1].length - a[1].length);
   const top1Pct = sortedAssignees[0] ? (sortedAssignees[0][1].length / resolved.length * 100) : 0;
@@ -628,11 +597,155 @@ function processRecords(records) {
       medianCycleHrs: Math.round(medCT*10)/10, p75CycleHrs: Math.round(p75CT*10)/10, p90CycleHrs: Math.round(p90CT*10)/10,
       bizHoursPct: Math.round(bizPct*10)/10, recontact24hPct: Math.round(recontact24Pct*10)/10, recontact72hPct: Math.round(recontact72Pct*10)/10,
       top1Name: sortedAssignees[0]?.[0] || 'N/A', top1Pct: Math.round(top1Pct*10)/10, top2Pct: Math.round(top2Pct*10)/10, top3Pct: Math.round(top3Pct*10)/10,
+      mtdTotal, mtdByPK,
     },
     monthlyVolume, monthlyByPK, dailyVolume, dowVolume, hourlyVolume, heatmap,
-    partnerVolume, priorityVolume, assigneeStats, cycleTimeDist: ctDist,
+    partnerVolume, priorityVolume, assigneeStats, assigneeVolume, cycleTimeDist: ctDist,
     partnerCycleTime, partnerRecontact, reopenedTickets, statusCounts,
   };
+}
+
+// ---- DATE FILTER ----
+function setDateFilter(filter) {
+  currentFilter = filter;
+  // Update button active states
+  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+  const labels = { all:'All Time', mtd:'MTD', '7':'Last 7 Days', '30':'Last 30 Days', '90':'Last 90 Days', custom:'Custom' };
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    if (btn.textContent === labels[filter]) btn.classList.add('active');
+  });
+  // Show/hide custom date inputs
+  document.getElementById('custom-dates').style.display = filter === 'custom' ? 'flex' : 'none';
+
+  if (filter === 'custom') return; // Wait for dates to be picked
+  applyFilter();
+}
+
+function applyCustomFilter() {
+  const from = document.getElementById('filter-from').value;
+  const to = document.getElementById('filter-to').value;
+  if (from && to) applyFilter();
+}
+
+function getFilterDateRange() {
+  const now = new Date();
+  if (currentFilter === 'all') return { from: null, to: null };
+  if (currentFilter === 'mtd') {
+    const y = now.getFullYear(), m = String(now.getMonth() + 1).padStart(2, '0');
+    return { from: `${y}-${m}-01`, to: now.toISOString().slice(0, 10) };
+  }
+  if (currentFilter === '7' || currentFilter === '30' || currentFilter === '90') {
+    const days = parseInt(currentFilter);
+    const cutoff = new Date(now - days * 86400000);
+    return { from: cutoff.toISOString().slice(0, 10), to: now.toISOString().slice(0, 10) };
+  }
+  if (currentFilter === 'custom') {
+    return { from: document.getElementById('filter-from').value, to: document.getElementById('filter-to').value };
+  }
+  return { from: null, to: null };
+}
+
+async function applyFilter() {
+  const status = document.getElementById('refresh-status');
+  const { from, to } = getFilterDateRange();
+
+  // For "All Time" with all projects, use cached data — no new API call needed
+  if (!from && !to && selectedProjects.size === ALL_PROJECTS.length) {
+    if (ALL_TIME_DATA) {
+      DATA = ALL_TIME_DATA;
+      renderContent();
+      updateStatusAndBadges('All Time');
+      return;
+    }
+  }
+
+  // Build URL with date range and project params for server-side filtering
+  let url = CONFIG.FETCH_URL;
+  const qparams = [];
+  if (from && to) {
+    qparams.push(`from=${from}`, `to=${to}`);
+  }
+  if (selectedProjects.size < ALL_PROJECTS.length) {
+    qparams.push(`projects=${[...selectedProjects].join(',')}`);
+  }
+  if (qparams.length) url += '?' + qparams.join('&');
+
+  status.innerHTML = '<span class="dot dot-amber"></span> Filtering...';
+
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+    DATA = json;
+    renderContent();
+    const filterLabels = { all:'All Time', mtd:'MTD', '7':'Last 7d', '30':'Last 30d', '90':'Last 90d', custom:'Custom' };
+    updateStatusAndBadges(filterLabels[currentFilter] || 'All Time');
+  } catch (e) {
+    console.error('Filter fetch failed:', e);
+    status.innerHTML = '<span class="dot dot-red"></span> Filter failed — showing cached data';
+  }
+}
+
+// ---- PROJECT FILTER ----
+function toggleProject(proj) {
+  if (selectedProjects.has(proj)) {
+    if (selectedProjects.size === 1) return; // Don't deselect last one
+    selectedProjects.delete(proj);
+  } else {
+    selectedProjects.add(proj);
+  }
+  updateProjectButtons();
+  applyFilter();
+}
+
+function toggleAllProjects() {
+  if (selectedProjects.size === ALL_PROJECTS.length) {
+    // Deselect all → just keep first one (can't have none)
+    // Actually toggle to none isn't useful, so this is "select all"
+    return;
+  }
+  ALL_PROJECTS.forEach(p => selectedProjects.add(p));
+  updateProjectButtons();
+  applyFilter();
+}
+
+function updateProjectButtons() {
+  const allBtn = document.getElementById('proj-all-btn');
+  const isAll = selectedProjects.size === ALL_PROJECTS.length;
+  if (allBtn) allBtn.classList.toggle('active', isAll);
+  document.querySelectorAll('.filter-btn[data-proj]').forEach(btn => {
+    const proj = btn.getAttribute('data-proj');
+    btn.classList.toggle('active', selectedProjects.has(proj));
+  });
+}
+
+function updateStatusAndBadges(filterLabel) {
+  const status = document.getElementById('refresh-status');
+  const isFiltered = currentFilter !== 'all';
+  const rowInfo = isFiltered
+    ? `${DATA.summary.totalTickets.toLocaleString()} tickets (${filterLabel})`
+    : `${DATA.summary.totalRows.toLocaleString()} rows`;
+  status.innerHTML = `<span class="dot dot-green"></span> Live | ${rowInfo} | Updated ${new Date().toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true, timeZone:'America/Chicago' })} CT`;
+
+  // Update badges — show all-time from cache, MTD from current data
+  const allTime = ALL_TIME_DATA ? ALL_TIME_DATA.summary.projectKeys : DATA.summary.projectKeys;
+  const mtd = DATA.summary.mtdByPK || {};
+  document.getElementById('badges').innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:11px;font-weight:600;color:#6b7280">All-Time:</span>
+      <span class="badge badge-teal">MCQM: ${allTime.MCQM?.toLocaleString() || 0}</span>
+      <span class="badge badge-blue">PSS: ${allTime.PSS?.toLocaleString() || 0}</span>
+      <span class="badge badge-gray">FHPS: ${allTime.FHPS?.toLocaleString() || 0}</span>
+      <span class="badge badge-gray">OAC: ${allTime.OAC?.toLocaleString() || 0}</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px">
+      <span style="font-size:11px;font-weight:600;color:#6b7280">MTD:</span>
+      <span class="badge badge-teal">MCQM: ${(mtd.MCQM || 0).toLocaleString()}</span>
+      <span class="badge badge-blue">PSS: ${(mtd.PSS || 0).toLocaleString()}</span>
+      <span class="badge badge-gray">FHPS: ${(mtd.FHPS || 0).toLocaleString()}</span>
+      <span class="badge badge-gray">OAC: ${(mtd.OAC || 0).toLocaleString()}</span>
+      <span class="badge badge-gray">Total: ${(DATA.summary.mtdTotal || 0).toLocaleString()}</span>
+    </div>`;
 }
 
 // ---- CHART HELPERS ----
@@ -649,6 +762,22 @@ function makeChart(canvasId, config) {
 
 // ---- RENDERING ----
 function renderContent() {
+  // Schedule tab works independently — handle before DATA guard
+  if (currentTab === 'schedule') {
+    destroyCharts();
+    const el = document.getElementById('main-content');
+    el.innerHTML = '';
+    if (!DATA) {
+      el.innerHTML = '<div class="info-box info-amber">Loading ticket data to generate schedule...</div>';
+      return;
+    }
+    if (!generatedSchedule) {
+      generatedSchedule = generateSchedule(buildDemandModel(), STAFF, 4);
+    }
+    renderScheduleTab(el);
+    return;
+  }
+
   if (!DATA) return;
   destroyCharts();
   const el = document.getElementById('main-content');
@@ -659,28 +788,28 @@ function renderContent() {
   if (currentTab === 'overview') {
     el.innerHTML = `
       <div class="section">
-        <h2>${tip('Key Performance Indicators','High-level metrics across all tickets. Hover over any KPI label for details.')}</h2>
+        <h2>Key Performance Indicators</h2>
         <div class="kpi-grid">
-          <div class="kpi"><div class="label">${tip('Total Tickets','Count of unique Jira ticket keys in the dataset. Deduplicated from raw comment rows.')}</div><div class="value">${s.totalTickets.toLocaleString()}</div><div class="sub">Unique ticket keys</div></div>
-          <div class="kpi"><div class="label">${tip('Open Backlog','Tickets in Pending, Waiting for Customer, Reopened, In Progress, or Waiting for Support. Amber if &gt;100.')}</div><div class="value ${s.openCount>100?'amber':'green'}">${s.openCount}</div><div class="sub">Active tickets</div></div>
-          <div class="kpi"><div class="label">${tip('Median Cycle Time','Middle value of (Resolved - Created) in hours. p75/p90 show tail distribution.')}</div><div class="value">${s.medianCycleHrs}h</div><div class="sub">p75: ${s.p75CycleHrs}h | p90: ${s.p90CycleHrs}h</div></div>
-          <div class="kpi"><div class="label">${tip('Reopened (Snapshot)','Tickets currently in Reopened status. Point-in-time, not historical reopen event count.')}</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Currently in Reopened status</div></div>
-          <div class="kpi"><div class="label">${tip('Resolved','Tickets with a resolution date. Resolution rate = Resolved / Total.')}</div><div class="value green">${s.resolvedCount.toLocaleString()}</div><div class="sub">${(s.resolvedCount/s.totalTickets*100).toFixed(1)}% resolution rate</div></div>
-          <div class="kpi"><div class="label">${tip('Recontact 24h','% of resolved tickets that received an external comment within 24 hours. Proxy for resolution quality.')}</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">External comment after resolve</div></div>
-          <div class="kpi"><div class="label">${tip('Biz Hours Volume','% of tickets created during 8 AM - 8 PM CT, Monday through Friday.')}</div><div class="value">${s.bizHoursPct}%</div><div class="sub">8 AM - 8 PM CT, M-F</div></div>
-          <div class="kpi"><div class="label">${tip('After-Hours','% of tickets created outside business hours. Informs after-hours staffing needs.')}</div><div class="value amber">${(100-s.bizHoursPct).toFixed(1)}%</div><div class="sub">Outside coverage window</div></div>
+          <div class="kpi"><div class="label">Total Tickets</div><div class="value">${s.totalTickets.toLocaleString()}</div><div class="sub">Unique ticket keys</div></div>
+          <div class="kpi"><div class="label">Open Backlog</div><div class="value ${s.openCount>100?'amber':'green'}">${s.openCount}</div><div class="sub">Active tickets</div></div>
+          <div class="kpi"><div class="label">Median Cycle Time</div><div class="value">${s.medianCycleHrs}h</div><div class="sub">p75: ${s.p75CycleHrs}h | p90: ${s.p90CycleHrs}h</div></div>
+          <div class="kpi"><div class="label">Reopened (Snapshot)</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Currently in Reopened status</div></div>
+          <div class="kpi"><div class="label">Resolved</div><div class="value green">${s.resolvedCount.toLocaleString()}</div><div class="sub">${(s.resolvedCount/s.totalTickets*100).toFixed(1)}% resolution rate</div></div>
+          <div class="kpi"><div class="label">Recontact 24h</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">External comment after resolve</div></div>
+          <div class="kpi"><div class="label">Biz Hours Volume</div><div class="value">${s.bizHoursPct}%</div><div class="sub">8 AM - 8 PM CT, M-F</div></div>
+          <div class="kpi"><div class="label">After-Hours</div><div class="value amber">${(100-s.bizHoursPct).toFixed(1)}%</div><div class="sub">Outside coverage window</div></div>
         </div>
       </div>
       <div class="section">
-        <h2>${tip('Monthly Volume Trend','Stacked bar chart of ticket creation by month, split by project (MCQM vs PSS). Last 18 months shown.')}</h2>
+        <h2>Monthly Volume Trend</h2>
         <div class="chart-container"><canvas id="chart-monthly" height="260"></canvas></div>
       </div>
       <div class="section">
-        <h2>${tip('Workload Concentration','How much volume is carried by the top agents. High concentration = risk if that person is out.')}</h2>
+        <h2>Workload Concentration</h2>
         <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
-          <div class="kpi"><div class="label">${tip('Top 1 ('+s.top1Name+')','% of all resolved tickets handled by the single busiest agent. High % = bus-factor risk.')}</div><div class="value">${s.top1Pct}%</div></div>
-          <div class="kpi"><div class="label">${tip('Top 2 Agents','Combined % of resolved tickets by the top 2 agents.')}</div><div class="value">${s.top2Pct}%</div></div>
-          <div class="kpi"><div class="label">${tip('Top 3 Agents','Combined % of resolved tickets by the top 3 agents. If &gt;80%, workload is too concentrated.')}</div><div class="value">${s.top3Pct}%</div></div>
+          <div class="kpi"><div class="label">Top 1 (${s.top1Name})</div><div class="value">${s.top1Pct}%</div></div>
+          <div class="kpi"><div class="label">Top 2 Agents</div><div class="value">${s.top2Pct}%</div></div>
+          <div class="kpi"><div class="label">Top 3 Agents</div><div class="value">${s.top3Pct}%</div></div>
         </div>
       </div>`;
 
@@ -691,6 +820,8 @@ function renderContent() {
         datasets: [
           { label: 'MCQM (Patient Support)', data: DATA.monthlyByPK.map(d => d.MCQM), backgroundColor: '#0f766e' },
           { label: 'PSS (Partner Support)', data: DATA.monthlyByPK.map(d => d.PSS), backgroundColor: '#1d4ed8' },
+          { label: 'FHPS', data: DATA.monthlyByPK.map(d => d.FHPS || 0), backgroundColor: '#7c3aed' },
+          { label: 'OAC', data: DATA.monthlyByPK.map(d => d.OAC || 0), backgroundColor: '#d97706' },
         ]
       },
       options: { responsive:true, plugins:{legend:{position:'bottom'}}, scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}} }
@@ -700,21 +831,21 @@ function renderContent() {
   else if (currentTab === 'demand') {
     el.innerHTML = `
       <div class="section">
-        <h2>${tip('Daily Ticket Volume (Last 60 Days)','Line chart of tickets created per calendar day. Helps identify volume spikes and trending patterns.')}</h2>
+        <h2>Daily Ticket Volume (Last 60 Days)</h2>
         <div class="chart-container"><canvas id="chart-daily" height="240"></canvas></div>
       </div>
       <div class="section">
-        <h2>${tip('Arrivals by Day of Week','Total tickets created on each day of the week across all data. Amber = weekends.')}</h2>
+        <h2>Arrivals by Day of Week</h2>
         <div class="chart-container"><canvas id="chart-dow" height="200"></canvas></div>
         <div class="note">Weekend = ${((DATA.dowVolume[5].tickets + DATA.dowVolume[6].tickets)/s.totalTickets*100).toFixed(1)}% of total volume.</div>
       </div>
       <div class="section">
-        <h2>${tip('Arrivals by Hour of Day (Central Time)','Ticket creation by hour, converted to CT. Green = business hours (8AM-8PM), amber = after-hours.')}</h2>
+        <h2>Arrivals by Hour of Day (Central Time)</h2>
         <div class="chart-container"><canvas id="chart-hourly" height="240"></canvas></div>
         <div class="note">Green = staffed hours (8 AM - 8 PM CT). Amber = after-hours.</div>
       </div>
       <div class="section">
-        <h2>${tip('Day x Hour Heatmap (Last 90 Days, Central Time)','Grid showing volume intensity by day-of-week and hour. Darker = more tickets. Reveals peak demand windows.')}</h2>
+        <h2>Day x Hour Heatmap (Last 90 Days, Central Time)</h2>
         <div style="overflow-x:auto">${renderHeatmap()}</div>
         <div class="note">Darker = higher volume. Coverage gap visible in evening hours.</div>
       </div>`;
@@ -750,16 +881,16 @@ function renderContent() {
   else if (currentTab === 'partners') {
     el.innerHTML = `
       <div class="section">
-        <h2>${tip('Volume by Partner (Top 15)','Total tickets per partner, sorted by volume descending. Top 15 shown.')}</h2>
+        <h2>Volume by Partner (Top 15)</h2>
         <div class="chart-container"><canvas id="chart-partner" height="340"></canvas></div>
       </div>
       <div class="section">
-        <h2>${tip('Post-Resolve Recontact Rate by Partner (24h)','% of resolved tickets per partner that got an external comment within 24h. Red &gt;10%, amber &gt;7%. Min 5 resolved.')}</h2>
+        <h2>Post-Resolve Recontact Rate by Partner (24h)</h2>
         <div class="chart-container"><canvas id="chart-recontact-partner" height="280"></canvas></div>
         <div class="note">Red = above 10%. Amber = above 7%.</div>
       </div>
       <div class="section">
-        <h2>${tip('Volume by Priority','Ticket count by Jira priority level across all data.')}</h2>
+        <h2>Volume by Priority</h2>
         <div class="chart-container"><canvas id="chart-priority" height="180"></canvas></div>
       </div>`;
 
@@ -769,7 +900,7 @@ function renderContent() {
         labels: DATA.partnerVolume.map(d=>d.partner),
         datasets: [{ data: DATA.partnerVolume.map(d=>d.tickets), backgroundColor:'#0f766e', borderRadius:4 }]
       },
-      options: { indexAxis:'horizontal', responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+      options: { indexAxis:'y', responsive:true, plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true}} }
     });
 
     makeChart('chart-recontact-partner', {
@@ -778,7 +909,7 @@ function renderContent() {
         labels: DATA.partnerRecontact.map(d=>d.partner),
         datasets: [{ data: DATA.partnerRecontact.map(d=>d.rate), backgroundColor: DATA.partnerRecontact.map(d=>d.rate>10?'#dc2626':d.rate>7?'#d97706':'#059669'), borderRadius:4 }]
       },
-      options: { indexAxis:'horizontal', responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}, x:{ticks:{callback:v=>v+'%'}}} }
+      options: { indexAxis:'y', responsive:true, plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true, ticks:{callback:v=>v+'%'}}} }
     });
 
     makeChart('chart-priority', {
@@ -794,18 +925,18 @@ function renderContent() {
   else if (currentTab === 'cycle') {
     el.innerHTML = `
       <div class="section">
-        <h2>${tip('Cycle Time Distribution (Created to Resolved)','Histogram of resolution times in buckets. Left-skewed = healthy (most resolved fast).')}</h2>
+        <h2>Cycle Time Distribution (Created to Resolved)</h2>
         <div class="chart-container"><canvas id="chart-ct" height="240"></canvas></div>
       </div>
       <div class="section">
-        <h2>${tip('Cycle Time by Partner','Median and p75 resolution time per partner. Red if median &gt;4h or p75 &gt;20h. Top 10 by volume.')}</h2>
+        <h2>Cycle Time by Partner</h2>
         <table>
           <thead><tr><th>Partner</th><th class="text-right">Resolved</th><th class="text-right">Median (hrs)</th><th class="text-right">p75 (hrs)</th></tr></thead>
           <tbody>${DATA.partnerCycleTime.map(p => `<tr><td class="font-bold">${p.partner}</td><td class="text-right">${p.tickets.toLocaleString()}</td><td class="text-right ${p.medianHrs>4?'text-red':''}">${p.medianHrs}</td><td class="text-right ${p.p75Hrs>20?'text-red':''}">${p.p75Hrs}</td></tr>`).join('')}</tbody>
         </table>
       </div>
       <div class="section">
-        <h2>${tip('Assignee Performance','Median and p75 cycle time per agent. Red if median &gt;10h or p75 &gt;20h. Top 12 by volume.')}</h2>
+        <h2>Assignee Performance</h2>
         <table>
           <thead><tr><th>Assignee</th><th class="text-right">Resolved</th><th class="text-right">Median (hrs)</th><th class="text-right">p75 (hrs)</th></tr></thead>
           <tbody>${DATA.assigneeStats.map(a => `<tr><td class="font-bold">${a.name}</td><td class="text-right">${a.tickets.toLocaleString()}</td><td class="text-right ${a.medianHrs>10?'text-red':''}">${a.medianHrs}</td><td class="text-right ${a.p75Hrs>20?'text-red':''}">${a.p75Hrs}</td></tr>`).join('')}</tbody>
@@ -825,18 +956,18 @@ function renderContent() {
   else if (currentTab === 'reopen') {
     el.innerHTML = `
       <div class="section">
-        <h2>${tip('Reopen &amp; Recontact Analysis','Snapshot-based reopen status + post-resolve recontact proxy. No changelog data available for true reopen event tracking.')}</h2>
-        <div class="info-yellow">
-          <p><strong>No changelog export available.</strong> Metrics below use snapshot status and post-resolution recontact proxies. Request a Jira changelog CSV export to enable full reopen event tracking.</p>
+        <h2>Reopen & Recontact Analysis</h2>
+        <div class="info-blue">
+          <p><strong>Live Jira data with full changelog.</strong> Reopen counts are derived from actual status transitions (Done/Resolved → non-final). Recontact rates use post-resolution external comments.</p>
         </div>
         <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-top:12px">
-          <div class="kpi"><div class="label">${tip('Currently Reopened','Tickets with Status = Reopened right now. Snapshot only, not historical.')}</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Snapshot status</div></div>
-          <div class="kpi"><div class="label">${tip('24h Recontact Rate','% of resolved tickets where customer commented within 24h of resolution. Best proxy for first-contact resolution quality.')}</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">External comment after resolve</div></div>
-          <div class="kpi"><div class="label">${tip('72h Recontact Rate','Wider 72h window. Captures delayed follow-ups. Higher than 24h by definition.')}</div><div class="value amber">${s.recontact72hPct}%</div><div class="sub">External comment after resolve</div></div>
+          <div class="kpi"><div class="label">Currently Reopened</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Snapshot status</div></div>
+          <div class="kpi"><div class="label">24h Recontact Rate</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">External comment after resolve</div></div>
+          <div class="kpi"><div class="label">72h Recontact Rate</div><div class="value amber">${s.recontact72hPct}%</div><div class="sub">External comment after resolve</div></div>
         </div>
       </div>
       <div class="section">
-        <h2>${tip('Currently Reopened Tickets ('+DATA.reopenedTickets.length+')','Tickets currently in Reopened status. Red age if &gt;5 days since creation.')}</h2>
+        <h2>Currently Reopened Tickets (${DATA.reopenedTickets.length})</h2>
         <table>
           <thead><tr><th>Key</th><th>Partner</th><th>Assignee</th><th class="text-right">Age (days)</th></tr></thead>
           <tbody>${DATA.reopenedTickets.map(t => {
@@ -846,7 +977,7 @@ function renderContent() {
         </table>
       </div>
       <div class="section">
-        <h2>${tip('Recontact Rate by Partner (24h)','Per-partner recontact rate. Red &gt;10%, amber &gt;7%. Min 5 resolved tickets to appear.')}</h2>
+        <h2>Recontact Rate by Partner (24h)</h2>
         <table>
           <thead><tr><th>Partner</th><th class="text-right">Resolved</th><th class="text-right">Recontacted</th><th class="text-right">Rate</th></tr></thead>
           <tbody>${DATA.partnerRecontact.map(p => `<tr><td class="font-bold">${p.partner}</td><td class="text-right">${p.total.toLocaleString()}</td><td class="text-right">${p.count}</td><td class="text-right ${p.rate>10?'text-red':p.rate>7?'text-amber':''}">${p.rate}%</td></tr>`).join('')}</tbody>
@@ -855,355 +986,38 @@ function renderContent() {
   }
 
   else if (currentTab === 'team') {
-    // ── Dynamic staffing analysis from actual ticket data ──
-    const staffing = computeStaffingRecommendations(DATA);
     el.innerHTML = `
       <div class="section">
-        <h2>${tip('Demand-Driven Staffing Analysis (Central Time)','Automatically computed from ticket arrival patterns. Updates every refresh.')}</h2>
-        <div class="info-blue" style="margin-bottom:16px">
-          <p><strong>Auto-generated from ${s.totalTickets.toLocaleString()} tickets.</strong>
-          Peak hours, gap analysis, and shift recommendations below are computed from actual arrival patterns — not hardcoded. Data refreshes with each load.</p>
-        </div>
+        <h2>Recommended Staffing (Central Time, M-F)</h2>
+        <table>
+          <thead><tr><th>Role</th><th>Schedule (CT)</th><th>Rationale</th><th class="text-right">Weekly Hrs</th></tr></thead>
+          <tbody>
+            <tr><td class="font-bold">Zoie</td><td>M-F, 9:00 AM - 5:00 PM CT</td><td style="font-size:12px;color:#6b7280">Covers midday ramp and early afternoon peak.</td><td class="text-right">40</td></tr>
+            <tr style="background:#eff6ff"><td class="font-bold">Brionna</td><td>M-F, 12:00 PM - 8:30 PM CT<br><span style="font-size:11px;color:#6b7280">(10:00 AM - 6:30 PM PT)</span></td><td style="font-size:12px;color:#6b7280">Covers absolute peak (2-6 PM CT). 10 AM PT avoids early start.</td><td class="text-right">42.5</td></tr>
+            <tr style="background:#fffbeb"><td class="font-bold">Bella</td><td>M-F, 4:00 PM - 8:00 PM CT<br><span style="font-size:11px;color:#6b7280">+ Sun 2:00 - 8:00 PM CT</span></td><td style="font-size:12px;color:#6b7280">Evening coverage + Sunday peak. 35 hrs/wk.</td><td class="text-right">35</td></tr>
+          </tbody>
+        </table>
       </div>
       <div class="section">
-        <h2>${tip('Hourly Demand Profile (CT, Weekdays)','Average tickets per hour on weekdays. Identifies peak demand windows for shift planning.')}</h2>
-        <div class="chart-container"><canvas id="chart-staffing-hourly" height="240"></canvas></div>
+        <h2>Coverage Map (M-F)</h2>
+        <div style="overflow-x:auto">${renderCoverageMap()}</div>
+        <div class="note">Peak overlap at 4-5 PM CT with 3 staff. Uncovered: 7-9 AM CT (very low volume).</div>
       </div>
       <div class="section">
-        <h2>${tip('Coverage Gap Analysis','Hours where demand exceeds current staffing. Red = uncovered high-demand, amber = partially covered.')}</h2>
-        ${staffing.gapTableHtml}
-      </div>
-      <div class="section">
-        <h2>${tip('Recommended Shift Structure','Shifts derived from demand peaks, gap analysis, and volume distribution. Updates automatically.')}</h2>
-        ${staffing.shiftTableHtml}
-      </div>
-      <div class="section">
-        <h2>${tip('Dynamic Coverage Map (M-F)','Recommended coverage overlay on hourly demand. Staff count per hour based on computed shifts.')}</h2>
-        <div style="overflow-x:auto">${staffing.coverageMapHtml}</div>
-      </div>
-      <div class="section">
-        <h2>${tip('Weekend Analysis','Weekend volume relative to weekdays. Informs whether weekend coverage is needed.')}</h2>
-        ${staffing.weekendHtml}
-      </div>
-      <div class="section">
-        <h2>${tip('Assignee Volume','Resolved tickets per agent. Horizontal bar shows workload distribution across the team.')}</h2>
+        <h2>Assignee Volume</h2>
         <div class="chart-container"><canvas id="chart-assignee" height="300"></canvas></div>
       </div>`;
 
-    // Hourly demand bar chart with peak threshold line
-    const wdHourly = staffing.weekdayHourly;
-    const peakThresh = staffing.peakThreshold;
-    makeChart('chart-staffing-hourly', {
-      type: 'bar',
-      data: {
-        labels: wdHourly.map(d => d.label),
-        datasets: [
-          {
-            label: 'Avg Tickets/Hour (Weekday)',
-            data: wdHourly.map(d => d.avg),
-            backgroundColor: wdHourly.map(d => d.avg >= peakThresh ? '#dc2626' : d.avg >= peakThresh * 0.6 ? '#d97706' : '#0f766e'),
-            borderRadius: 4,
-          },
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { display: false },
-          annotation: false,
-        },
-        scales: {
-          y: { beginAtZero: true, title: { display: true, text: 'Avg Tickets' } },
-        }
-      }
-    });
-
+    const avData = DATA.assigneeVolume || DATA.assigneeStats;
     makeChart('chart-assignee', {
       type: 'bar',
       data: {
-        labels: DATA.assigneeStats.map(a=>a.name),
-        datasets: [{ data: DATA.assigneeStats.map(a=>a.tickets), backgroundColor:'#0f766e', borderRadius:4 }]
+        labels: avData.map(a=>a.name),
+        datasets: [{ data: avData.map(a=>a.tickets), backgroundColor:'#0f766e', borderRadius:4 }]
       },
-      options: { indexAxis:'horizontal', responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+      options: { indexAxis:'y', responsive:true, plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true}} }
     });
   }
-
-  else if (currentTab === 'definitions') {
-    el.innerHTML = renderDefinitions();
-  }
-}
-
-// ---- TOOLTIP HELPER ----
-// Tooltip: uses data attributes + JS event delegation for fixed positioning
-function tip(label, text) {
-  // Escape quotes for attribute safety
-  const safeText = text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  return `<span class="tip" data-tip="${safeText}">${label}</span>`;
-}
-
-// Global tooltip element + event delegation
-(function() {
-  const el = document.createElement('div');
-  el.className = 'tip-float';
-  el.id = 'global-tip';
-  document.body.appendChild(el);
-
-  document.addEventListener('mouseenter', function(e) {
-    const trigger = e.target.closest('.tip[data-tip]');
-    if (!trigger) return;
-    const text = trigger.getAttribute('data-tip');
-    if (!text) return;
-
-    el.textContent = text;
-    el.classList.remove('below');
-    el.classList.add('show');
-
-    // Position after content is set
-    requestAnimationFrame(function() {
-      const rect = trigger.getBoundingClientRect();
-      const tipRect = el.getBoundingClientRect();
-      let top = rect.top - tipRect.height - 8;
-      let left = rect.left + rect.width / 2 - tipRect.width / 2;
-      let below = false;
-
-      if (top < 4) { top = rect.bottom + 8; below = true; }
-      if (left < 4) left = 4;
-      if (left + tipRect.width > window.innerWidth - 4) left = window.innerWidth - tipRect.width - 4;
-
-      el.style.top = top + 'px';
-      el.style.left = left + 'px';
-      if (below) el.classList.add('below');
-    });
-  }, true);
-
-  document.addEventListener('mouseleave', function(e) {
-    const trigger = e.target.closest('.tip[data-tip]');
-    if (!trigger) return;
-    el.classList.remove('show', 'below');
-  }, true);
-})();
-
-// ---- DEFINITIONS TAB ----
-function renderDefinitions() {
-  return `
-    <div class="section">
-      <h2>\u{1F4D6} Definitions &amp; Measurement Guide</h2>
-      <p style="font-size:13px;color:var(--gray-500);margin-bottom:20px;line-height:1.6">
-        This page explains every metric, KPI, and visual indicator used in this dashboard.
-        All timestamps are converted to Central Time (CT). Data is sourced from Google Sheets (Jira export).
-      </p>
-    </div>
-
-    <div class="def-section">
-      <h3>\u{1F4CA} Overview KPIs</h3>
-      <div class="def-grid">
-        <div class="def-card">
-          <div class="def-title">Total Tickets</div>
-          <div class="def-formula">COUNT(DISTINCT Key)</div>
-          <div class="def-body">The number of unique Jira ticket keys in the dataset. Each key (e.g., MCQM-1234) is counted once, even if multiple comment rows exist.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Open Backlog</div>
-          <div class="def-formula">Status IN (Pending, Waiting for Customer, Reopened, In Progress, Waiting for support)</div>
-          <div class="def-body">Tickets currently in an active/open status. Does not include resolved, closed, or cancelled tickets. Amber if &gt;100.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Median Cycle Time</div>
-          <div class="def-formula">MEDIAN(Resolved - Created) in hours</div>
-          <div class="def-body">The middle value of all resolution times. p75 = 75th percentile (75% resolved faster), p90 = 90th percentile. Lower is better.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Reopened (Snapshot)</div>
-          <div class="def-formula">Status = "Reopened"</div>
-          <div class="def-body">Tickets currently sitting in "Reopened" status. This is a point-in-time snapshot, not a count of reopen events. Colored red as these need immediate attention.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Resolved</div>
-          <div class="def-formula">COUNT(tickets WHERE Resolved IS NOT NULL)</div>
-          <div class="def-body">Tickets that have a resolution date. Resolution rate = Resolved / Total Tickets. Higher is better.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Recontact 24h Rate</div>
-          <div class="def-formula">External comment within 24h after Resolved date / Resolved count</div>
-          <div class="def-body">Proxy for first-contact resolution failure. If a customer comments within 24 hours of resolution, the issue likely was not fully resolved. Target: &lt;5%.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Biz Hours Volume</div>
-          <div class="def-formula">Created 8 AM - 8 PM CT, Mon-Fri / Total</div>
-          <div class="def-body">Percentage of tickets created during business hours. The remaining percentage represents after-hours volume that may need coverage.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Workload Concentration</div>
-          <div class="def-formula">Top N agents&apos; resolved count / Total resolved</div>
-          <div class="def-body">Shows how much volume is handled by the top 1, 2, and 3 agents. High concentration (&gt;50% for top 1) signals a bus-factor risk.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="def-section">
-      <h3>\u{1F501} Reopen &amp; Recontact</h3>
-      <div class="def-grid">
-        <div class="def-card">
-          <div class="def-title">Currently Reopened</div>
-          <div class="def-formula">Status = "Reopened" (snapshot)</div>
-          <div class="def-body">Point-in-time count of tickets in Reopened status. This dashboard uses Google Sheets data (no changelog), so we cannot track historical reopen events.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">24h Recontact Rate</div>
-          <div class="def-formula">(Resolved tickets with external comment within 24h) / Resolved count</div>
-          <div class="def-body">Best proxy for resolution quality. An external (customer) comment shortly after resolution suggests the ticket was not properly resolved. Used in place of true reopen tracking.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">72h Recontact Rate</div>
-          <div class="def-formula">(Resolved tickets with external comment within 72h) / Resolved count</div>
-          <div class="def-body">Wider window for recontact detection. Captures cases where customers take longer to follow up. Higher than 24h rate, but still indicates resolution quality issues.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Recontact by Partner</div>
-          <div class="def-formula">24h recontact count per partner / Partner resolved count</div>
-          <div class="def-body">Identifies which partners have the highest recontact rates. Partners with &gt;10% rate (red) may need process review or additional training. Minimum 5 resolved tickets required.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="def-section">
-      <h3>\u{23F1}\u{FE0F} Cycle Time</h3>
-      <div class="def-grid">
-        <div class="def-card">
-          <div class="def-title">Cycle Time</div>
-          <div class="def-formula">(Resolved timestamp - Created timestamp) in hours</div>
-          <div class="def-body">Total elapsed time from ticket creation to resolution. Includes all waiting time, weekends, and holidays. Not a "handle time" metric.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Percentiles (p75, p90)</div>
-          <div class="def-formula">75th and 90th percentile of cycle times</div>
-          <div class="def-body">p75 = 75% of tickets resolved within this time. p90 = 90% resolved. The gap between median and p90 shows tail-risk (outlier slow tickets).</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Cycle Time Distribution</div>
-          <div class="def-formula">Buckets: &lt;30m, 30m-1h, 1-2h, 2-4h, 4-8h, 8-24h, 1-2d, 2-7d, 7d+</div>
-          <div class="def-body">Shows how resolution times cluster. A healthy distribution is left-skewed (most tickets resolved quickly). Heavy right tail means systemic delays.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Assignee Performance</div>
-          <div class="def-formula">Median and p75 cycle time per agent</div>
-          <div class="def-body">Compares resolution speed across agents. Red highlight if median &gt;10h or p75 &gt;20h. Top 12 agents by volume shown.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="def-section">
-      <h3>\u{1F4C5} Demand &amp; Arrivals</h3>
-      <div class="def-grid">
-        <div class="def-card">
-          <div class="def-title">Daily Volume (Last 60 Days)</div>
-          <div class="def-body">Line chart of tickets created per day over the last 60 days. Helps identify volume spikes, trends, and seasonal patterns.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Day-of-Week Distribution</div>
-          <div class="def-body">Total tickets by day of week across all data. Amber bars = weekends. Shows whether weekend coverage is needed based on volume.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Hourly Distribution (CT)</div>
-          <div class="def-body">Ticket arrivals by hour of day in Central Time. Green bars = staffed hours (8 AM - 8 PM), amber = after-hours. Used for shift planning.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Day x Hour Heatmap</div>
-          <div class="def-body">Last 90 days of ticket arrivals plotted by day-of-week and hour-of-day. Darker cells = higher volume. Reveals coverage gaps and peak demand windows.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="def-section">
-      <h3>\u{1F465} Team &amp; Staffing</h3>
-      <div class="def-grid">
-        <div class="def-card">
-          <div class="def-title">Coverage Map</div>
-          <div class="def-body">Visual grid showing which team members are scheduled during each hour (7 AM - 8 PM CT). "Staff On" row shows total coverage per hour. Red = 0 staff, yellow = 1, green = 2+.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Assignee Volume</div>
-          <div class="def-body">Horizontal bar chart of resolved tickets per agent. Shows workload distribution and helps identify imbalances.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="def-section">
-      <h3>\u{1F3F7}\u{FE0F} Color &amp; Threshold Legend</h3>
-      <table class="legend-table">
-        <thead><tr><th>Indicator</th><th>Meaning</th><th>Threshold</th></tr></thead>
-        <tbody>
-          <tr>
-            <td><span class="legend-badge" style="background:var(--red-light);color:var(--red)">Red value</span></td>
-            <td>Critical / needs attention</td>
-            <td>Cycle time median &gt;10h, p75 &gt;20h, recontact &gt;10%, reopened ticket age &gt;5d</td>
-          </tr>
-          <tr>
-            <td><span class="legend-badge" style="background:var(--amber-light);color:var(--amber)">Amber value</span></td>
-            <td>Warning / approaching threshold</td>
-            <td>Recontact 7-10%, open backlog &gt;100, after-hours volume</td>
-          </tr>
-          <tr>
-            <td><span class="legend-badge" style="background:var(--green-light);color:var(--green)">Green value</span></td>
-            <td>Healthy / within target</td>
-            <td>Resolution rate, resolved count, recontact &lt;7%</td>
-          </tr>
-          <tr>
-            <td><span class="legend-badge" style="background:var(--teal-light);color:var(--teal)">Teal badge</span></td>
-            <td>MCQM project tickets</td>
-            <td>Project key starts with MCQM</td>
-          </tr>
-          <tr>
-            <td><span class="legend-badge" style="background:var(--blue-light);color:var(--blue)">Blue badge</span></td>
-            <td>PSS project tickets</td>
-            <td>Project key starts with PSS</td>
-          </tr>
-          <tr>
-            <td style="font-size:12px">Heatmap cells (darker teal)</td>
-            <td>Higher ticket volume</td>
-            <td>Color intensity proportional to count / max count in 90-day window</td>
-          </tr>
-          <tr>
-            <td style="font-size:12px">Coverage map: <span style="color:var(--red);font-weight:700">0</span> / <span style="color:#ca8a04;font-weight:700">1</span> / <span style="color:var(--green);font-weight:700">2+</span></td>
-            <td>Staff on during that hour</td>
-            <td>0 = no coverage (red bg), 1 = single coverage (yellow bg), 2+ = overlap (green bg)</td>
-          </tr>
-          <tr>
-            <td><span class="legend-badge" style="background:#eff6ff;color:#1e40af">Blue info box</span></td>
-            <td>Informational context</td>
-            <td>General guidance or methodology notes</td>
-          </tr>
-          <tr>
-            <td><span class="legend-badge" style="background:#fefce8;color:#854d0e">Yellow info box</span></td>
-            <td>Data limitation warning</td>
-            <td>Flags where data is incomplete (e.g., no changelog for reopen tracking)</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="def-section">
-      <h3>\u{1F4E1} Data Sources &amp; Refresh</h3>
-      <div class="def-grid">
-        <div class="def-card">
-          <div class="def-title">Data Source</div>
-          <div class="def-body">Google Sheets export from Jira. Contains ticket fields (Key, Status, Created, Resolved, Partner, Issue Type, Priority, Assignee, Reporter) and comment metadata (date, author, internal flag).</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Refresh Interval</div>
-          <div class="def-body">Auto-refreshes every 60 minutes via Netlify serverless function. Click "Refresh Now" for on-demand update. Live status dot shows connection state (green = connected, red = error).</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Deduplication</div>
-          <div class="def-body">Raw data may have multiple rows per ticket (one per comment). The dashboard deduplicates to unique ticket keys, using the first row for ticket metadata and all rows for comment analysis.</div>
-        </div>
-        <div class="def-card">
-          <div class="def-title">Known Limitations</div>
-          <div class="def-body">No Jira changelog data &mdash; cannot track true reopen events, only current "Reopened" status snapshot. Recontact rate is a proxy for resolution quality, not a true reopen metric. Timestamps assumed Eastern, converted to Central.</div>
-        </div>
-      </div>
-    </div>
-  `;
 }
 
 function renderHeatmap() {
@@ -1231,204 +1045,624 @@ function renderHeatmap() {
   return html;
 }
 
-// ── Dynamic Staffing Engine ─────────────────────────────────
-// Computes everything from actual ticket data — no hardcoded schedules.
-function computeStaffingRecommendations(DATA) {
+function renderCoverageMap() {
+  const hours = [7,8,9,10,11,12,13,14,15,16,17,18,19,20];
   const hlabel = h => `${h%12||12} ${h<12?'AM':'PM'}`;
-  const dowOrder = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const dowNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const zoie =    [0,0,1,1,1,1,1,1,1,1,0,0,0,0];
+  const wc =      [0,0,0,0,0,1,1,1,1,1,1,1,1,0];
+  const pt =      [0,0,0,0,0,0,0,0,0,1,1,1,1,0];
+  const totals =  zoie.map((v,i)=>v+wc[i]+pt[i]);
+  const colors = ['#0f766e','#1d4ed8','#d97706'];
+  const people = [{name:'Zoie',hrs:zoie},{name:'Brionna',hrs:wc},{name:'Bella',hrs:pt}];
 
-  // ── 1. Compute weekday hourly averages (last 90 days) ──
-  // Count weekdays in the dataset for accurate averaging
-  const now = new Date();
-  const d90 = new Date(now - 90*86400000);
-  let weekdayCount = 0;
-  for (let d = new Date(d90); d <= now; d.setDate(d.getDate()+1)) {
-    const dow = d.getDay();
-    if (dow >= 1 && dow <= 5) weekdayCount++;
+  let html = '<table class="coverage-table"><thead><tr><th></th>';
+  hours.forEach(h => html += `<th>${hlabel(h)}</th>`);
+  html += '</tr></thead><tbody>';
+
+  people.forEach((p,pi) => {
+    html += `<tr><td class="role-label">${p.name}</td>`;
+    p.hrs.forEach(on => {
+      html += `<td style="background:${on?colors[pi]:'#f3f4f6'};color:${on?'#fff':'#d1d5db'};font-weight:600">${on?'ON':''}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '<tr style="border-top:2px solid #9ca3af"><td class="role-label" style="font-weight:700">Staff On</td>';
+  totals.forEach(n => {
+    const bg = n===0?'#fef2f2':n===1?'#fef9c3':n===2?'#ecfdf5':'#d1fae5';
+    const fg = n===0?'#dc2626':n===1?'#ca8a04':'#059669';
+    html += `<td style="background:${bg};color:${fg};font-weight:700">${n}</td>`;
+  });
+  html += '</tr></tbody></table>';
+  return html;
+}
+
+// ============================================================
+// SCHEDULE TAB — Auto-generated staff rotation
+// ============================================================
+
+function getSchedDays() {
+  return SCHED_CONFIG.weekStart === 'Sun' ? SCHED_DAYS_SUN : SCHED_DAYS_MON;
+}
+
+function schedFmtTime(h) {
+  const hr = Math.floor(h);
+  const min = h % 1 >= 0.5 ? ':30' : '';
+  if (hr === 0) return `12${min} AM`;
+  if (hr < 12) return `${hr}${min} AM`;
+  if (hr === 12) return `12${min} PM`;
+  return `${hr-12}${min} PM`;
+}
+
+function schedFmtShort(h) {
+  const hr = Math.floor(h);
+  const min = h % 1 >= 0.5 ? ':30' : '';
+  if (hr === 0) return `12${min}a`;
+  if (hr < 12) return `${hr}${min}a`;
+  if (hr === 12) return `12${min}p`;
+  return `${hr-12}${min}p`;
+}
+
+// ---- DEMAND MODEL ----
+function buildDemandModel() {
+  if (!DATA || !DATA.heatmap) return null;
+  // Build average tickets per hour per day-of-week
+  const model = {};
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  days.forEach(d => {
+    model[d] = {};
+    for (let h = 0; h < 24; h++) {
+      const cell = DATA.heatmap.find(r => r.day === d && r.hour === h);
+      model[d][h] = cell ? cell.count : 0;
+    }
+  });
+  return model;
+}
+
+function calibrateCapacity(demandModel) {
+  if (!demandModel) return 3.0;
+  // Sum business hour demand across M-F
+  let totalDemand = 0;
+  let bizDays = 0;
+  ['Mon','Tue','Wed','Thu','Fri'].forEach(d => {
+    for (let h = SCHED_COVERAGE.start; h < SCHED_COVERAGE.end; h++) {
+      totalDemand += demandModel[d][h] || 0;
+    }
+    bizDays++;
+  });
+  // Estimate from heatmap data (last 90 days): average per week-day
+  const weeksInData = 13; // ~90 days
+  const avgDailyDemand = totalDemand / (bizDays * weeksInData);
+  // Assume ~26 staff-hours per day (3 people, avg 8.7h each)
+  const staffHoursPerDay = 26;
+  const capacity = staffHoursPerDay > 0 ? avgDailyDemand / staffHoursPerDay : 3.0;
+  return Math.max(1.0, Math.round(capacity * 10) / 10);
+}
+
+// ---- SCHEDULE GENERATOR ----
+function generateSchedule(demandModel, staff, numWeeks) {
+  if (!demandModel) return null;
+  const days = getSchedDays();
+  const weeks = [];
+
+  // Day-off rotation patterns for Brionna and Bella
+  // Each week they get 2 days off, rotating to cover different weekend/weekday combos
+  const offPatterns = [
+    { brionna: ['Tue','Thu'], bella: ['Sat','Sun'] },
+    { brionna: ['Sat','Sun'], bella: ['Thu','Mon'] },
+    { brionna: ['Tue','Thu'], bella: ['Sat','Sun'] },
+    { brionna: ['Sun','Tue'], bella: ['Sat','Thu'] },
+  ];
+
+  for (let wi = 0; wi < numWeeks; wi++) {
+    const pattern = offPatterns[wi % offPatterns.length];
+    const weekShifts = {};
+
+    days.forEach(day => {
+      weekShifts[day] = [];
+      const isWeekend = day === 'Sat' || day === 'Sun';
+
+      // Determine who works this day
+      const working = staff.filter(person => {
+        const isOff = person.fixedDaysOff.includes(day) ||
+          (person.name === 'Brionna' && pattern.brionna.includes(day)) ||
+          (person.name === 'Bella' && pattern.bella.includes(day));
+        return !isOff;
+      });
+
+      // Two-pass assignment: first spread coverage, then optimize
+      // Pass 1: Assign Zoie (constrained flex)
+      const zoie = working.find(p => p.flexHours !== null);
+      if (zoie) {
+        // Zoie starts as early as possible to cover morning
+        let bestStart, bestEnd, bestScore = -1;
+        for (let offset = -zoie.flexHours; offset <= zoie.flexHours; offset += 0.5) {
+          const s = zoie.baseStart + offset;
+          const e = zoie.baseEnd + offset;
+          let score = 0;
+          for (let h = Math.floor(s); h < e; h++) score += demandModel[day][h] || 0;
+          // Strong bonus for covering early morning (8-10a) when no one else is on
+          for (let h = SCHED_COVERAGE.start; h < SCHED_COVERAGE.start + 2; h++) {
+            if (s <= h && e > h) score += 10;
+          }
+          if (score > bestScore) { bestScore = score; bestStart = s; bestEnd = e; }
+        }
+        if (bestStart !== undefined) {
+          weekShifts[day].push({ name: zoie.name, start: bestStart, end: bestEnd, color: zoie.color });
+        }
+      }
+
+      // Pass 2: Assign flexible staff to maximize spread and fill gaps
+      const flexible = working.filter(p => p.flexHours === null);
+      // Sort so the person with longer shifts goes first (Brionna 8.5h before Bella 7h)
+      flexible.sort((a, b) => {
+        const aLen = a.name === 'Bella' ? 7 : 8.5;
+        const bLen = b.name === 'Bella' ? 7 : 8.5;
+        return bLen - aLen;
+      });
+
+      flexible.forEach((person, idx) => {
+        const shiftLen = person.name === 'Bella' ? 7 : 8.5;
+        const earliest = 7;
+        const latest = 21 - shiftLen;
+        let bestStart, bestEnd, bestScore = -1;
+
+        for (let s = earliest; s <= latest; s += 0.5) {
+          const e = s + shiftLen;
+          let score = 0;
+          // Demand score
+          for (let h = Math.floor(s); h < e; h++) score += demandModel[day][h] || 0;
+          // Coverage window bonus
+          for (let h = SCHED_COVERAGE.start; h < SCHED_COVERAGE.end; h++) {
+            if (s <= h && e > h) score += 3;
+          }
+          // Gap-filling bonus: huge bonus for covering hours not yet covered
+          const existingShifts = weekShifts[day];
+          for (let h = SCHED_COVERAGE.start; h < SCHED_COVERAGE.end; h++) {
+            const alreadyCovered = existingShifts.some(sh => sh.start <= h && sh.end > h);
+            if (!alreadyCovered && s <= h && e > h) score += 15; // strong gap-fill incentive
+          }
+          // Late coverage bonus for last flexible person — push toward evening
+          if (idx === flexible.length - 1) {
+            for (let h = 17; h < SCHED_COVERAGE.end; h++) {
+              if (s <= h && e > h) score += 5;
+            }
+          }
+          if (score > bestScore) { bestScore = score; bestStart = s; bestEnd = e; }
+        }
+
+        if (bestStart !== undefined) {
+          weekShifts[day].push({ name: person.name, start: bestStart, end: bestEnd, color: person.color });
+        }
+      });
+
+      // Sort shifts by start time
+      weekShifts[day].sort((a, b) => a.start - b.start);
+    });
+
+    // Calculate weekly hours per person
+    const hours = {};
+    staff.forEach(p => {
+      let total = 0;
+      days.forEach(d => {
+        const shift = weekShifts[d].find(s => s.name === p.name);
+        if (shift) total += shift.end - shift.start;
+      });
+      hours[p.name] = Math.round(total * 10) / 10;
+    });
+
+    // Enforce hour caps — trim shifts if over
+    if (hours['Bella'] > 35) {
+      // Find the lowest-demand day for Bella and shorten or remove
+      let lowestDay = null, lowestScore = Infinity;
+      days.forEach(d => {
+        const shift = weekShifts[d].find(s => s.name === 'Bella');
+        if (shift) {
+          let score = 0;
+          for (let h = Math.floor(shift.start); h < shift.end; h++) score += demandModel[d][h] || 0;
+          if (score < lowestScore) { lowestScore = score; lowestDay = d; }
+        }
+      });
+      if (lowestDay) {
+        const shift = weekShifts[lowestDay].find(s => s.name === 'Bella');
+        const excess = hours['Bella'] - 35;
+        if (excess >= shift.end - shift.start) {
+          weekShifts[lowestDay] = weekShifts[lowestDay].filter(s => s.name !== 'Bella');
+        } else {
+          shift.end -= excess;
+        }
+        // Recalculate
+        let total = 0;
+        days.forEach(d => { const s = weekShifts[d].find(s => s.name === 'Bella'); if (s) total += s.end - s.start; });
+        hours['Bella'] = Math.round(total * 10) / 10;
+      }
+    }
+
+    // Determine days off per person
+    const daysOff = {};
+    staff.forEach(p => {
+      daysOff[p.name] = days.filter(d => !weekShifts[d].some(s => s.name === p.name));
+    });
+
+    weeks.push({
+      label: String.fromCharCode(65 + wi), // A, B, C, D
+      days: weekShifts,
+      hours,
+      daysOff,
+    });
   }
-  weekdayCount = Math.max(weekdayCount, 1);
 
-  // Weekday heatmap totals per hour
-  const wdHourTotals = Array(24).fill(0);
-  const weHourTotals = Array(24).fill(0);
-  let weekendDayCount = 0;
-  for (let d = new Date(d90); d <= now; d.setDate(d.getDate()+1)) {
-    if (d.getDay() === 0 || d.getDay() === 6) weekendDayCount++;
-  }
-  weekendDayCount = Math.max(weekendDayCount, 1);
+  return weeks;
+}
 
-  DATA.heatmap.forEach(cell => {
-    const isWeekend = cell.day === 'Sat' || cell.day === 'Sun';
-    if (isWeekend) {
-      weHourTotals[cell.hour] += cell.count;
-    } else {
-      wdHourTotals[cell.hour] += cell.count;
+// ---- GAP ANALYSIS ----
+function analyzeGaps(weekSchedule, demandModel, capacity) {
+  if (!weekSchedule || !demandModel) return [];
+  const alerts = [];
+  const days = getSchedDays();
+
+  days.forEach(day => {
+    const shifts = weekSchedule.days[day] || [];
+    const isWeekend = day === 'Sat' || day === 'Sun';
+
+    for (let h = SCHED_COVERAGE.start; h < SCHED_COVERAGE.end; h++) {
+      const staffOn = shifts.filter(s => s.start <= h && s.end > h).length;
+      const demand = demandModel[day][h] || 0;
+      const cap = staffOn * capacity;
+
+      if (staffOn === 0 && !isWeekend) {
+        alerts.push({ severity: 'red', day, hour: h, staffOn, demand,
+          msg: `${day} ${schedFmtShort(h)}-${schedFmtShort(h+1)}: No coverage (avg ${demand} tickets/hr)` });
+      } else if (demand > cap * 1.2 && staffOn > 0 && !isWeekend) {
+        alerts.push({ severity: 'amber', day, hour: h, staffOn, demand,
+          msg: `${day} ${schedFmtShort(h)}-${schedFmtShort(h+1)}: ${staffOn} staff for avg ${demand} tickets/hr — may need support` });
+      }
     }
   });
 
-  const weekdayHourly = Array.from({length: 24}, (_, h) => ({
-    hour: h,
-    label: hlabel(h),
-    total: wdHourTotals[h],
-    avg: Math.round(wdHourTotals[h] / weekdayCount * 10) / 10,
-  }));
+  return alerts;
+}
 
-  const weekendHourly = Array.from({length: 24}, (_, h) => ({
-    hour: h,
-    label: hlabel(h),
-    total: weHourTotals[h],
-    avg: Math.round(weHourTotals[h] / weekendDayCount * 10) / 10,
-  }));
+// ---- RENDERING ----
+function switchScheduleWeek(i) {
+  currentScheduleWeek = i;
+  schedEditOpen = null;
+  const el = document.getElementById('main-content');
+  renderScheduleTab(el);
+}
 
-  // ── 2. Identify peak/high/moderate/low demand bands ──
-  const maxAvg = Math.max(...weekdayHourly.map(d => d.avg));
-  const peakThreshold = maxAvg * 0.75;  // 75% of max = peak
-  const highThreshold = maxAvg * 0.45;  // 45% = high
-  const lowThreshold = maxAvg * 0.15;   // 15% = low
+function regenerateSchedule() {
+  scheduleOverrides = {};
+  generatedSchedule = generateSchedule(buildDemandModel(), STAFF, 4);
+  const el = document.getElementById('main-content');
+  renderScheduleTab(el);
+}
 
-  const peakHours = weekdayHourly.filter(d => d.avg >= peakThreshold).map(d => d.hour);
-  const highHours = weekdayHourly.filter(d => d.avg >= highThreshold && d.avg < peakThreshold).map(d => d.hour);
-  const lowHours = weekdayHourly.filter(d => d.avg < lowThreshold && d.hour >= 6 && d.hour <= 22).map(d => d.hour);
-  const activeHours = weekdayHourly.filter(d => d.avg >= lowThreshold).map(d => d.hour);
-  const activeStart = activeHours.length ? Math.min(...activeHours) : 8;
-  const activeEnd = activeHours.length ? Math.max(...activeHours) + 1 : 20;
+function getEffectiveWeek(weekIdx) {
+  if (!generatedSchedule || !generatedSchedule[weekIdx]) return null;
+  const week = JSON.parse(JSON.stringify(generatedSchedule[weekIdx]));
+  // Apply overrides
+  Object.entries(scheduleOverrides).forEach(([key, val]) => {
+    const [wi, day, person] = key.split('|');
+    if (parseInt(wi) !== weekIdx) return;
+    const shifts = week.days[day];
+    if (!shifts) return;
+    if (val === null) {
+      // Remove shift
+      week.days[day] = shifts.filter(s => s.name !== person);
+    } else {
+      const existing = shifts.find(s => s.name === person);
+      if (existing) {
+        existing.start = val.start;
+        existing.end = val.end;
+      } else {
+        const staffMember = STAFF.find(s => s.name === person);
+        shifts.push({ name: person, start: val.start, end: val.end, color: staffMember ? staffMember.color : 'teal' });
+      }
+      shifts.sort((a, b) => a.start - b.start);
+    }
+  });
+  // Recalculate hours
+  const days = getSchedDays();
+  STAFF.forEach(p => {
+    let total = 0;
+    days.forEach(d => { const s = (week.days[d]||[]).find(s => s.name === p.name); if (s) total += s.end - s.start; });
+    week.hours[p.name] = Math.round(total * 10) / 10;
+  });
+  week.daysOff = {};
+  STAFF.forEach(p => {
+    week.daysOff[p.name] = days.filter(d => !(week.days[d]||[]).some(s => s.name === p.name));
+  });
+  return week;
+}
 
-  // ── 3. Build recommended shifts from demand curve ──
-  // Shift 1: Core/AM — covers first ramp to early afternoon
-  const peakStart = peakHours.length ? Math.min(...peakHours) : 12;
-  const peakEnd = peakHours.length ? Math.max(...peakHours) + 1 : 18;
-  const shift1Start = Math.max(activeStart, peakStart - 2);
-  const shift1End = Math.min(shift1Start + 8, 22);
+function renderScheduleTab(el) {
+  const demandModel = buildDemandModel();
+  const capacity = calibrateCapacity(demandModel);
+  const week = getEffectiveWeek(currentScheduleWeek);
+  if (!week) { el.innerHTML = '<div class="info-box info-amber">Unable to generate schedule — insufficient data.</div>'; return; }
 
-  // Shift 2: Afternoon/PM — covers peak through evening
-  const shift2Start = Math.max(peakStart, shift1Start + 2);
-  const shift2End = Math.min(shift2Start + 8, activeEnd + 1);
+  const alerts = analyzeGaps(week, demandModel, capacity);
+  const hasOverrides = Object.keys(scheduleOverrides).some(k => k.startsWith(currentScheduleWeek + '|'));
 
-  // Shift 3: If demand extends beyond shift 2, add evening/part-time
-  const needsEvening = activeEnd > shift2End - 1;
-  const shift3Start = needsEvening ? Math.max(shift2Start + 2, peakEnd - 2) : 0;
-  const shift3End = needsEvening ? Math.min(shift3Start + 4, activeEnd + 1) : 0;
+  el.innerHTML = `
+    <div class="section">
+      <h2>4-Week Staff Rotation</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:12px;color:var(--gray-500);margin-bottom:8px">
+            Auto-generated from last 90 days of ticket patterns &middot; All times Central Time &middot; Coverage: 8 AM - 8 PM CT, Mon-Fri
+          </div>
+          <div class="sched-week-tabs">
+            ${generatedSchedule.map((w, i) => `<button class="filter-btn ${i === currentScheduleWeek ? 'active' : ''}" onclick="switchScheduleWeek(${i})">Week ${w.label}</button>`).join('')}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          ${hasOverrides ? `<button class="btn" onclick="scheduleOverrides={};switchScheduleWeek(${currentScheduleWeek})" style="font-size:11px">Reset tweaks</button>` : ''}
+          <button class="btn btn-teal" onclick="regenerateSchedule()" style="font-size:12px">Regenerate</button>
+        </div>
+      </div>
+    </div>
 
-  const shifts = [
-    { name: 'Shift A (Core)', start: shift1Start, end: shift1End, color: '#0f766e', weeklyHrs: (shift1End - shift1Start) * 5 },
-    { name: 'Shift B (PM)', start: shift2Start, end: shift2End, color: '#1d4ed8', weeklyHrs: (shift2End - shift2Start) * 5 },
-  ];
-  if (needsEvening && shift3End > shift3Start) {
-    shifts.push({ name: 'Shift C (Evening)', start: shift3Start, end: shift3End, color: '#d97706', weeklyHrs: (shift3End - shift3Start) * 5 });
+    ${alerts.filter(a=>a.severity==='red').length > 0 ? `
+    <div class="info-box info-red" style="margin-bottom:16px">
+      <strong>Coverage Gaps</strong>
+      ${alerts.filter(a=>a.severity==='red').map(a=>`<p style="margin:4px 0;font-size:12px">${a.msg}</p>`).join('')}
+    </div>` : ''}
+
+    ${alerts.filter(a=>a.severity==='amber').length > 0 ? `
+    <div class="info-box info-amber" style="margin-bottom:16px">
+      <strong>Potential Understaffing</strong>
+      ${alerts.filter(a=>a.severity==='amber').slice(0,5).map(a=>`<p style="margin:4px 0;font-size:12px">${a.msg}</p>`).join('')}
+      ${alerts.filter(a=>a.severity==='amber').length > 5 ? `<p style="font-size:11px;color:var(--gray-500)">+ ${alerts.filter(a=>a.severity==='amber').length - 5} more</p>` : ''}
+    </div>` : ''}
+
+    ${alerts.length === 0 ? `<div class="info-box info-green" style="margin-bottom:16px"><strong>Full coverage</strong> — No gaps detected for Week ${week.label} during 8 AM - 8 PM M-F.</div>` : ''}
+
+    <div class="section">
+      <h2>Week ${week.label} — Shift Timeline</h2>
+      <div style="font-size:11px;color:var(--gray-500);margin-top:-12px;margin-bottom:12px">Click any shift bar to adjust times</div>
+      ${renderScheduleTimeline(week, demandModel)}
+    </div>
+
+    <div class="two-col">
+      <div class="section">
+        <h2>Team</h2>
+        ${renderScheduleLegend()}
+        <h2 style="margin-top:24px">Week ${week.label} Hours</h2>
+        ${renderScheduleHours(week)}
+      </div>
+      <div class="section">
+        <h2>Week ${week.label} Coverage Depth (8 AM - 8 PM)</h2>
+        ${renderScheduleCoverage(week, demandModel)}
+      </div>
+    </div>
+  `;
+}
+
+function renderScheduleTimeline(week, demandModel) {
+  const days = getSchedDays();
+  const rangeSpan = SCHED_RANGE.end - SCHED_RANGE.start;
+
+  // Hour labels
+  let hourLabels = '';
+  for (let h = SCHED_RANGE.start; h <= SCHED_RANGE.end; h++) {
+    const pct = ((h - SCHED_RANGE.start) / rangeSpan) * 100;
+    hourLabels += `<span class="sched-hour-label" style="left:${pct}%">${schedFmtShort(h)}</span>`;
   }
 
-  // ── 4. Shift recommendation table ──
-  let shiftTableHtml = '<table><thead><tr><th>Shift</th><th>Recommended Hours (CT)</th><th>Rationale</th><th class="text-right">Weekly Hrs</th></tr></thead><tbody>';
-  shifts.forEach((sh, i) => {
-    const bgs = ['', 'background:#eff6ff', 'background:#fffbeb'];
-    const peakOverlap = peakHours.filter(h => h >= sh.start && h < sh.end).length;
-    const highOverlap = highHours.filter(h => h >= sh.start && h < sh.end).length;
-    const rationale = peakOverlap > 0
-      ? `Covers ${peakOverlap} peak hour${peakOverlap>1?'s':''} (${peakHours.filter(h => h >= sh.start && h < sh.end).map(hlabel).join(', ')}). ${highOverlap} additional high-demand hours.`
-      : `Covers ${highOverlap} high-demand hour${highOverlap>1?'s':''} and extends evening coverage.`;
-    shiftTableHtml += `<tr style="${bgs[i]}"><td class="font-bold">${sh.name}</td><td>M-F, ${hlabel(sh.start)} - ${hlabel(sh.end)} CT</td><td style="font-size:12px;color:#6b7280">${rationale}</td><td class="text-right">${sh.weeklyHrs}</td></tr>`;
-  });
-  shiftTableHtml += '</tbody></table>';
-
-  // ── 5. Gap analysis table ──
-  const displayHours = [];
-  for (let h = Math.max(6, activeStart - 1); h <= Math.min(22, activeEnd + 1); h++) displayHours.push(h);
-
-  let gapTableHtml = '<table><thead><tr><th>Hour (CT)</th><th class="text-right">Avg Tickets</th><th>Demand Level</th><th class="text-right">Staff Covering</th><th>Gap?</th></tr></thead><tbody>';
-  displayHours.forEach(h => {
-    const d = weekdayHourly[h];
-    const staffCount = shifts.filter(sh => h >= sh.start && h < sh.end).length;
-    const level = d.avg >= peakThreshold ? 'PEAK' : d.avg >= highThreshold ? 'HIGH' : d.avg >= lowThreshold ? 'MODERATE' : 'LOW';
-    const levelColor = level === 'PEAK' ? 'var(--red)' : level === 'HIGH' ? 'var(--amber)' : level === 'MODERATE' ? 'var(--teal)' : 'var(--gray-400)';
-    const hasGap = (level === 'PEAK' || level === 'HIGH') && staffCount === 0;
-    const underStaffed = level === 'PEAK' && staffCount < 2;
-    const gapText = hasGap ? '<span style="color:var(--red);font-weight:700">NO COVERAGE</span>'
-      : underStaffed ? '<span style="color:var(--amber);font-weight:600">UNDERSTAFFED</span>'
-      : '<span style="color:var(--green)">OK</span>';
-    const rowBg = hasGap ? 'background:var(--red-bg)' : underStaffed ? 'background:var(--amber-bg)' : '';
-    gapTableHtml += `<tr style="${rowBg}"><td class="mono">${hlabel(h)}</td><td class="text-right">${d.avg}</td><td style="color:${levelColor};font-weight:600">${level}</td><td class="text-right">${staffCount}</td><td>${gapText}</td></tr>`;
-  });
-  gapTableHtml += '</tbody></table>';
-
-  // ── 6. Dynamic coverage map ──
-  const mapHours = [];
-  for (let h = Math.max(6, activeStart - 1); h <= Math.min(22, activeEnd); h++) mapHours.push(h);
-
-  let coverageMapHtml = '<table class="coverage-table"><thead><tr><th></th>';
-  mapHours.forEach(h => coverageMapHtml += `<th>${hlabel(h)}</th>`);
-  coverageMapHtml += '</tr></thead><tbody>';
-
-  // Demand row
-  coverageMapHtml += '<tr><td class="role-label">Demand</td>';
-  mapHours.forEach(h => {
-    const d = weekdayHourly[h];
-    const intensity = maxAvg > 0 ? d.avg / maxAvg : 0;
-    const bg = d.avg < lowThreshold ? '#f3f4f6' : `rgba(220,38,38,${0.1 + intensity * 0.7})`;
-    const fg = intensity > 0.5 ? '#fff' : '#374151';
-    coverageMapHtml += `<td style="background:${bg};color:${fg};font-size:10px">${d.avg}</td>`;
-  });
-  coverageMapHtml += '</tr>';
-
-  // Shift rows
-  const shiftColors = ['#0f766e','#1d4ed8','#d97706','#7c3aed'];
-  shifts.forEach((sh, si) => {
-    coverageMapHtml += `<tr><td class="role-label">${sh.name}</td>`;
-    mapHours.forEach(h => {
-      const on = h >= sh.start && h < sh.end;
-      coverageMapHtml += `<td style="background:${on ? shiftColors[si] : '#f3f4f6'};color:${on ? '#fff' : '#d1d5db'};font-weight:600">${on ? 'ON' : ''}</td>`;
+  // Find max demand for opacity scaling
+  let maxDemand = 1;
+  if (demandModel) {
+    days.forEach(d => {
+      for (let h = SCHED_RANGE.start; h < SCHED_RANGE.end; h++) {
+        maxDemand = Math.max(maxDemand, demandModel[d][h] || 0);
+      }
     });
-    coverageMapHtml += '</tr>';
-  });
-
-  // Total staff row
-  coverageMapHtml += '<tr style="border-top:2px solid #9ca3af"><td class="role-label" style="font-weight:700">Staff On</td>';
-  mapHours.forEach(h => {
-    const n = shifts.filter(sh => h >= sh.start && h < sh.end).length;
-    const bg = n===0?'#fef2f2':n===1?'#fef9c3':n===2?'#ecfdf5':'#d1fae5';
-    const fg = n===0?'#dc2626':n===1?'#ca8a04':'#059669';
-    coverageMapHtml += `<td style="background:${bg};color:${fg};font-weight:700">${n}</td>`;
-  });
-  coverageMapHtml += '</tr></tbody></table>';
-
-  // ── 7. Weekend analysis ──
-  const wdTotal = DATA.dowVolume.filter(d => !['Sat','Sun'].includes(d.day)).reduce((s,d) => s + d.tickets, 0);
-  const weTotal = DATA.dowVolume.filter(d => ['Sat','Sun'].includes(d.day)).reduce((s,d) => s + d.tickets, 0);
-  const wePct = wdTotal + weTotal > 0 ? (weTotal / (wdTotal + weTotal) * 100) : 0;
-  const weAvgDaily = weTotal / Math.max(weekendDayCount, 1);
-  const wdAvgDaily = wdTotal / Math.max(weekdayCount, 1);
-  const satTickets = DATA.dowVolume.find(d => d.day === 'Sat')?.tickets || 0;
-  const sunTickets = DATA.dowVolume.find(d => d.day === 'Sun')?.tickets || 0;
-  const wePeakHour = weekendHourly.reduce((max, d) => d.avg > max.avg ? d : max, {avg:0, label:'N/A'});
-
-  let weekendHtml = `
-    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:12px">
-      <div class="kpi"><div class="label">${tip('Weekend Share','% of all tickets arriving on Sat+Sun.')}</div><div class="value ${wePct > 15 ? 'amber' : ''}">${Math.round(wePct*10)/10}%</div><div class="sub">of total volume</div></div>
-      <div class="kpi"><div class="label">${tip('Sat Volume','Total Saturday tickets in dataset.')}</div><div class="value">${satTickets.toLocaleString()}</div></div>
-      <div class="kpi"><div class="label">${tip('Sun Volume','Total Sunday tickets in dataset.')}</div><div class="value">${sunTickets.toLocaleString()}</div></div>
-      <div class="kpi"><div class="label">${tip('Weekend Peak Hour','Hour with highest average weekend ticket arrivals.')}</div><div class="value">${wePeakHour.label}</div><div class="sub">${wePeakHour.avg} avg tickets</div></div>
-    </div>`;
-
-  if (wePct > 10) {
-    weekendHtml += `<div class="info-amber"><p><strong>Weekend coverage recommended.</strong> ${Math.round(wePct)}% of volume arrives on weekends (avg ${Math.round(weAvgDaily*10)/10} tickets/day vs ${Math.round(wdAvgDaily*10)/10} weekday). Consider ${wePct > 20 ? 'full' : 'partial'} weekend shifts, especially around ${wePeakHour.label} CT.</p></div>`;
-  } else {
-    weekendHtml += `<div class="info-green"><p><strong>Weekend coverage optional.</strong> Only ${Math.round(wePct)}% of volume arrives on weekends. Current weekday-focused staffing is appropriate.</p></div>`;
   }
 
-  return {
-    weekdayHourly,
-    peakThreshold,
-    gapTableHtml,
-    shiftTableHtml,
-    coverageMapHtml,
-    weekendHtml,
-    shifts,
-  };
+  let dayRows = '';
+  days.forEach(day => {
+    const shifts = week.days[day] || [];
+    const isWeekend = day === 'Sat' || day === 'Sun';
+    const dayLabelClass = isWeekend ? 'sched-day-label weekend' : 'sched-day-label';
+
+    // Coverage window background
+    const covLeft = ((SCHED_COVERAGE.start - SCHED_RANGE.start) / rangeSpan) * 100;
+    const covWidth = ((SCHED_COVERAGE.end - SCHED_COVERAGE.start) / rangeSpan) * 100;
+
+    // Demand overlay cells
+    let demandCells = '';
+    if (demandModel) {
+      for (let h = SCHED_RANGE.start; h < SCHED_RANGE.end; h++) {
+        const val = demandModel[day][h] || 0;
+        const intensity = maxDemand > 0 ? val / maxDemand : 0;
+        const left = ((h - SCHED_RANGE.start) / rangeSpan) * 100;
+        const width = (1 / rangeSpan) * 100;
+        if (val > 0) {
+          demandCells += `<div class="sched-demand-cell" style="left:${left}%;width:${width}%;background:rgba(15,118,110,${intensity * 0.08})" title="${day} ${schedFmtShort(h)}: ${val} tickets"></div>`;
+        }
+      }
+    }
+
+    // Gridlines
+    let gridlines = '';
+    for (let h = SCHED_RANGE.start; h <= SCHED_RANGE.end; h++) {
+      const pct = ((h - SCHED_RANGE.start) / rangeSpan) * 100;
+      gridlines += `<div class="sched-gridline" style="left:${pct}%"></div>`;
+    }
+
+    // Shift bars — 3 fixed lanes: Zoie=top, Brionna=mid, Bella=bottom
+    const laneMap = { 'Zoie': 3, 'Brionna': 18, 'Bella': 33 };
+    let bars = '';
+    shifts.forEach(shift => {
+      const left = ((shift.start - SCHED_RANGE.start) / rangeSpan) * 100;
+      const width = ((shift.end - shift.start) / rangeSpan) * 100;
+      const top = laneMap[shift.name] !== undefined ? laneMap[shift.name] : 3;
+      const overrideKey = `${currentScheduleWeek}|${day}|${shift.name}`;
+      const isOverridden = scheduleOverrides[overrideKey] !== undefined;
+      bars += `<div class="sched-bar ${shift.color}" style="left:${left}%;width:${width}%;top:${top}px${isOverridden ? ';border-style:dashed' : ''}" onclick="editShift(${currentScheduleWeek},'${day}','${shift.name}')" title="${shift.name}: ${schedFmtTime(shift.start)} - ${schedFmtTime(shift.end)}">
+        <div class="bar-accent"></div>
+        <span style="margin-left:4px">${shift.name}</span>
+        <span class="bar-time">${schedFmtShort(shift.start)}-${schedFmtShort(shift.end)}</span>
+      </div>`;
+    });
+
+    // Off label
+    const offLabel = shifts.length === 0 ? '<span class="sched-off-label">Off</span>' : '';
+
+    // Edit popover
+    let popover = '';
+    if (schedEditOpen && schedEditOpen.day === day) {
+      popover = renderEditPopover(schedEditOpen.weekIdx, schedEditOpen.day, schedEditOpen.person, shifts);
+    }
+
+    dayRows += `
+      <div class="${dayLabelClass}">${day}</div>
+      <div class="sched-day-track" style="position:relative">
+        ${!isWeekend ? `<div class="sched-coverage-bg" style="left:${covLeft}%;width:${covWidth}%"></div>` : ''}
+        ${demandCells}
+        ${gridlines}
+        ${bars}
+        ${offLabel}
+        ${popover}
+      </div>`;
+  });
+
+  return `<div class="sched-timeline"><div class="sched-grid">
+    <div></div><div class="sched-hour-headers">${hourLabels}</div>
+    ${dayRows}
+  </div></div>`;
+}
+
+function renderScheduleLegend() {
+  return `<div style="display:flex;flex-direction:column;gap:8px;padding:8px 0">
+    ${STAFF.map(p => `
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="width:12px;height:12px;border-radius:3px;background:var(--${p.color});flex-shrink:0"></span>
+        <span style="font-size:13px;font-weight:600;color:var(--gray-800)">${p.name}</span>
+        <span style="font-size:11px;color:var(--gray-500)">${p.tz} Time</span>
+      </div>
+    `).join('')}
+    <div style="display:flex;align-items:center;gap:8px;margin-top:4px;padding-top:8px;border-top:1px solid var(--gray-200)">
+      <span style="width:12px;height:12px;border-radius:3px;background:rgba(15,118,110,0.06);border:1px solid var(--gray-200);flex-shrink:0"></span>
+      <span style="font-size:11px;color:var(--gray-500)">Shaded = required coverage (8a-8p CT)</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="width:12px;height:12px;border-radius:3px;background:rgba(15,118,110,0.08);border:1px solid var(--gray-200);flex-shrink:0"></span>
+      <span style="font-size:11px;color:var(--gray-500)">Darker background = higher ticket volume</span>
+    </div>
+  </div>`;
+}
+
+function renderScheduleHours(week) {
+  let html = '';
+  STAFF.forEach(p => {
+    const hrs = week.hours[p.name] || 0;
+    const cap = p.maxHrs || 40;
+    const pct = Math.min(100, (hrs / cap) * 100);
+    const isOver = p.maxHrs && hrs > p.maxHrs;
+    const offDays = (week.daysOff[p.name] || []).join(', ') || 'None';
+
+    html += `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+        <span style="font-size:12px;font-weight:600;color:var(--${p.color})">${p.name}</span>
+        <span style="font-size:11px;font-family:monospace;color:${isOver ? 'var(--red)' : 'var(--gray-500)'}">
+          ${hrs}h${p.maxHrs ? ` / ${p.maxHrs}h max` : ''}${isOver ? ' OVER' : ''}
+        </span>
+      </div>
+      <div class="sched-hours-bar"><div class="sched-hours-fill ${p.color}" style="width:${pct}%"></div></div>
+      <div style="font-size:10px;color:var(--gray-400);margin-top:3px">Off: ${offDays}</div>
+    </div>`;
+  });
+  return html;
+}
+
+function renderScheduleCoverage(week, demandModel) {
+  const days = getSchedDays();
+  const hours = [];
+  for (let h = SCHED_COVERAGE.start; h < SCHED_COVERAGE.end; h++) hours.push(h);
+
+  let html = '<div style="overflow-x:auto"><table class="coverage-table"><thead><tr><th></th>';
+  hours.forEach(h => html += `<th>${schedFmtShort(h)}</th>`);
+  html += '</tr></thead><tbody>';
+
+  days.forEach(day => {
+    const shifts = week.days[day] || [];
+    html += `<tr><td class="role-label">${day}</td>`;
+    hours.forEach(h => {
+      const staffOn = shifts.filter(s => s.start <= h && s.end > h).length;
+      const demand = demandModel ? (demandModel[day][h] || 0) : 0;
+      const bg = staffOn === 0 ? '#fef2f2' : staffOn === 1 ? '#fef9c3' : staffOn === 2 ? '#ecfdf5' : '#d1fae5';
+      const fg = staffOn === 0 ? '#dc2626' : staffOn === 1 ? '#ca8a04' : '#059669';
+      html += `<td style="background:${bg};color:${fg};font-weight:700" title="${day} ${schedFmtShort(h)}: ${staffOn} staff, ${demand} avg tickets">${staffOn}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  html += '<div class="note">Colors: <span style="color:#dc2626;font-weight:600">red</span> = 0 staff, <span style="color:#ca8a04;font-weight:600">yellow</span> = 1 staff, <span style="color:#059669;font-weight:600">green</span> = 2+ staff</div>';
+  return html;
+}
+
+// ---- MANUAL TWEAKS ----
+function editShift(weekIdx, day, person) {
+  if (schedEditOpen && schedEditOpen.weekIdx === weekIdx && schedEditOpen.day === day && schedEditOpen.person === person) {
+    schedEditOpen = null;
+  } else {
+    schedEditOpen = { weekIdx, day, person };
+  }
+  const el = document.getElementById('main-content');
+  renderScheduleTab(el);
+}
+
+function renderEditPopover(weekIdx, day, person, shifts) {
+  const shift = shifts.find(s => s.name === person);
+  const currentStart = shift ? shift.start : 8;
+  const currentEnd = shift ? shift.end : 16;
+
+  // Generate time options (30-min increments)
+  let startOptions = '', endOptions = '';
+  for (let h = 6; h <= 21; h += 0.5) {
+    startOptions += `<option value="${h}" ${h === currentStart ? 'selected' : ''}>${schedFmtTime(h)}</option>`;
+    endOptions += `<option value="${h}" ${h === currentEnd ? 'selected' : ''}>${schedFmtTime(h)}</option>`;
+  }
+
+  return `<div class="sched-popover" style="top:52px;left:10px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px">${person} — ${day}</div>
+    <div style="display:flex;gap:12px;margin-bottom:8px">
+      <div><label>Start</label><select id="sched-edit-start">${startOptions}</select></div>
+      <div><label>End</label><select id="sched-edit-end">${endOptions}</select></div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-teal" style="font-size:11px;padding:4px 10px" onclick="saveShiftEdit(${weekIdx},'${day}','${person}')">Save</button>
+      <button class="btn" style="font-size:11px;padding:4px 10px" onclick="removeShift(${weekIdx},'${day}','${person}')">Remove shift</button>
+      <button class="btn" style="font-size:11px;padding:4px 10px" onclick="schedEditOpen=null;switchScheduleWeek(${weekIdx})">Cancel</button>
+    </div>
+  </div>`;
+}
+
+function saveShiftEdit(weekIdx, day, person) {
+  const startEl = document.getElementById('sched-edit-start');
+  const endEl = document.getElementById('sched-edit-end');
+  if (!startEl || !endEl) return;
+  const start = parseFloat(startEl.value);
+  const end = parseFloat(endEl.value);
+  if (end <= start) { alert('End time must be after start time'); return; }
+  scheduleOverrides[`${weekIdx}|${day}|${person}`] = { start, end };
+  schedEditOpen = null;
+  switchScheduleWeek(weekIdx);
+}
+
+function removeShift(weekIdx, day, person) {
+  scheduleOverrides[`${weekIdx}|${day}|${person}`] = null;
+  schedEditOpen = null;
+  switchScheduleWeek(weekIdx);
 }
 
 // ---- INIT ----
 renderTabs();
-// fetchData() is called by showApp() after successful auth
+fetchData();
 </script>
 </body>
 </html>
