@@ -855,27 +855,68 @@ function renderContent() {
   }
 
   else if (currentTab === 'team') {
+    // ── Dynamic staffing analysis from actual ticket data ──
+    const staffing = computeStaffingRecommendations(DATA);
     el.innerHTML = `
       <div class="section">
-        <h2>${tip('Recommended Staffing (Central Time, M-F)','Shift schedules derived from demand heatmap analysis. Optimized for peak coverage.')}</h2>
-        <table>
-          <thead><tr><th>Role</th><th>Schedule (CT)</th><th>Rationale</th><th class="text-right">Weekly Hrs</th></tr></thead>
-          <tbody>
-            <tr><td class="font-bold">Zoie (salaried)</td><td>M-F, 9:00 AM - 5:00 PM CT</td><td style="font-size:12px;color:#6b7280">Covers midday ramp and early afternoon peak.</td><td class="text-right">40</td></tr>
-            <tr style="background:#eff6ff"><td class="font-bold">West Coast FTE</td><td>M-F, 12:00 PM - 8:30 PM CT<br><span style="font-size:11px;color:#6b7280">(10:00 AM - 6:30 PM PT)</span></td><td style="font-size:12px;color:#6b7280">Covers absolute peak (2-6 PM CT). 10 AM PT avoids early start.</td><td class="text-right">42.5</td></tr>
-            <tr style="background:#fffbeb"><td class="font-bold">Part-Time (CT)</td><td>M-F, 4:00 PM - 8:00 PM CT<br><span style="font-size:11px;color:#6b7280">+ Sun 2:00 - 8:00 PM CT</span></td><td style="font-size:12px;color:#6b7280">Evening coverage + Sunday peak. 26 hrs/wk.</td><td class="text-right">26</td></tr>
-          </tbody>
-        </table>
+        <h2>${tip('Demand-Driven Staffing Analysis (Central Time)','Automatically computed from ticket arrival patterns. Updates every refresh.')}</h2>
+        <div class="info-blue" style="margin-bottom:16px">
+          <p><strong>Auto-generated from ${s.totalTickets.toLocaleString()} tickets.</strong>
+          Peak hours, gap analysis, and shift recommendations below are computed from actual arrival patterns — not hardcoded. Data refreshes with each load.</p>
+        </div>
       </div>
       <div class="section">
-        <h2>${tip('Coverage Map (M-F)','Which team members are scheduled during each hour. Row total shows overlap. 0 staff = coverage gap.')}</h2>
-        <div style="overflow-x:auto">${renderCoverageMap()}</div>
-        <div class="note">Peak overlap at 4-5 PM CT with 3 staff. Uncovered: 7-9 AM CT (very low volume).</div>
+        <h2>${tip('Hourly Demand Profile (CT, Weekdays)','Average tickets per hour on weekdays. Identifies peak demand windows for shift planning.')}</h2>
+        <div class="chart-container"><canvas id="chart-staffing-hourly" height="240"></canvas></div>
+      </div>
+      <div class="section">
+        <h2>${tip('Coverage Gap Analysis','Hours where demand exceeds current staffing. Red = uncovered high-demand, amber = partially covered.')}</h2>
+        ${staffing.gapTableHtml}
+      </div>
+      <div class="section">
+        <h2>${tip('Recommended Shift Structure','Shifts derived from demand peaks, gap analysis, and volume distribution. Updates automatically.')}</h2>
+        ${staffing.shiftTableHtml}
+      </div>
+      <div class="section">
+        <h2>${tip('Dynamic Coverage Map (M-F)','Recommended coverage overlay on hourly demand. Staff count per hour based on computed shifts.')}</h2>
+        <div style="overflow-x:auto">${staffing.coverageMapHtml}</div>
+      </div>
+      <div class="section">
+        <h2>${tip('Weekend Analysis','Weekend volume relative to weekdays. Informs whether weekend coverage is needed.')}</h2>
+        ${staffing.weekendHtml}
       </div>
       <div class="section">
         <h2>${tip('Assignee Volume','Resolved tickets per agent. Horizontal bar shows workload distribution across the team.')}</h2>
         <div class="chart-container"><canvas id="chart-assignee" height="300"></canvas></div>
       </div>`;
+
+    // Hourly demand bar chart with peak threshold line
+    const wdHourly = staffing.weekdayHourly;
+    const peakThresh = staffing.peakThreshold;
+    makeChart('chart-staffing-hourly', {
+      type: 'bar',
+      data: {
+        labels: wdHourly.map(d => d.label),
+        datasets: [
+          {
+            label: 'Avg Tickets/Hour (Weekday)',
+            data: wdHourly.map(d => d.avg),
+            backgroundColor: wdHourly.map(d => d.avg >= peakThresh ? '#dc2626' : d.avg >= peakThresh * 0.6 ? '#d97706' : '#0f766e'),
+            borderRadius: 4,
+          },
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          annotation: false,
+        },
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: 'Avg Tickets' } },
+        }
+      }
+    });
 
     makeChart('chart-assignee', {
       type: 'bar',
@@ -1190,36 +1231,199 @@ function renderHeatmap() {
   return html;
 }
 
-function renderCoverageMap() {
-  const hours = [7,8,9,10,11,12,13,14,15,16,17,18,19,20];
+// ── Dynamic Staffing Engine ─────────────────────────────────
+// Computes everything from actual ticket data — no hardcoded schedules.
+function computeStaffingRecommendations(DATA) {
   const hlabel = h => `${h%12||12} ${h<12?'AM':'PM'}`;
-  const zoie =    [0,0,1,1,1,1,1,1,1,1,0,0,0,0];
-  const wc =      [0,0,0,0,0,1,1,1,1,1,1,1,1,0];
-  const pt =      [0,0,0,0,0,0,0,0,0,1,1,1,1,0];
-  const totals =  zoie.map((v,i)=>v+wc[i]+pt[i]);
-  const colors = ['#0f766e','#1d4ed8','#d97706'];
-  const people = [{name:'Zoie',hrs:zoie},{name:'West Coast FTE',hrs:wc},{name:'Part-Time',hrs:pt}];
+  const dowOrder = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const dowNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  let html = '<table class="coverage-table"><thead><tr><th></th>';
-  hours.forEach(h => html += `<th>${hlabel(h)}</th>`);
-  html += '</tr></thead><tbody>';
+  // ── 1. Compute weekday hourly averages (last 90 days) ──
+  // Count weekdays in the dataset for accurate averaging
+  const now = new Date();
+  const d90 = new Date(now - 90*86400000);
+  let weekdayCount = 0;
+  for (let d = new Date(d90); d <= now; d.setDate(d.getDate()+1)) {
+    const dow = d.getDay();
+    if (dow >= 1 && dow <= 5) weekdayCount++;
+  }
+  weekdayCount = Math.max(weekdayCount, 1);
 
-  people.forEach((p,pi) => {
-    html += `<tr><td class="role-label">${p.name}</td>`;
-    p.hrs.forEach(on => {
-      html += `<td style="background:${on?colors[pi]:'#f3f4f6'};color:${on?'#fff':'#d1d5db'};font-weight:600">${on?'ON':''}</td>`;
-    });
-    html += '</tr>';
+  // Weekday heatmap totals per hour
+  const wdHourTotals = Array(24).fill(0);
+  const weHourTotals = Array(24).fill(0);
+  let weekendDayCount = 0;
+  for (let d = new Date(d90); d <= now; d.setDate(d.getDate()+1)) {
+    if (d.getDay() === 0 || d.getDay() === 6) weekendDayCount++;
+  }
+  weekendDayCount = Math.max(weekendDayCount, 1);
+
+  DATA.heatmap.forEach(cell => {
+    const isWeekend = cell.day === 'Sat' || cell.day === 'Sun';
+    if (isWeekend) {
+      weHourTotals[cell.hour] += cell.count;
+    } else {
+      wdHourTotals[cell.hour] += cell.count;
+    }
   });
 
-  html += '<tr style="border-top:2px solid #9ca3af"><td class="role-label" style="font-weight:700">Staff On</td>';
-  totals.forEach(n => {
+  const weekdayHourly = Array.from({length: 24}, (_, h) => ({
+    hour: h,
+    label: hlabel(h),
+    total: wdHourTotals[h],
+    avg: Math.round(wdHourTotals[h] / weekdayCount * 10) / 10,
+  }));
+
+  const weekendHourly = Array.from({length: 24}, (_, h) => ({
+    hour: h,
+    label: hlabel(h),
+    total: weHourTotals[h],
+    avg: Math.round(weHourTotals[h] / weekendDayCount * 10) / 10,
+  }));
+
+  // ── 2. Identify peak/high/moderate/low demand bands ──
+  const maxAvg = Math.max(...weekdayHourly.map(d => d.avg));
+  const peakThreshold = maxAvg * 0.75;  // 75% of max = peak
+  const highThreshold = maxAvg * 0.45;  // 45% = high
+  const lowThreshold = maxAvg * 0.15;   // 15% = low
+
+  const peakHours = weekdayHourly.filter(d => d.avg >= peakThreshold).map(d => d.hour);
+  const highHours = weekdayHourly.filter(d => d.avg >= highThreshold && d.avg < peakThreshold).map(d => d.hour);
+  const lowHours = weekdayHourly.filter(d => d.avg < lowThreshold && d.hour >= 6 && d.hour <= 22).map(d => d.hour);
+  const activeHours = weekdayHourly.filter(d => d.avg >= lowThreshold).map(d => d.hour);
+  const activeStart = activeHours.length ? Math.min(...activeHours) : 8;
+  const activeEnd = activeHours.length ? Math.max(...activeHours) + 1 : 20;
+
+  // ── 3. Build recommended shifts from demand curve ──
+  // Shift 1: Core/AM — covers first ramp to early afternoon
+  const peakStart = peakHours.length ? Math.min(...peakHours) : 12;
+  const peakEnd = peakHours.length ? Math.max(...peakHours) + 1 : 18;
+  const shift1Start = Math.max(activeStart, peakStart - 2);
+  const shift1End = Math.min(shift1Start + 8, 22);
+
+  // Shift 2: Afternoon/PM — covers peak through evening
+  const shift2Start = Math.max(peakStart, shift1Start + 2);
+  const shift2End = Math.min(shift2Start + 8, activeEnd + 1);
+
+  // Shift 3: If demand extends beyond shift 2, add evening/part-time
+  const needsEvening = activeEnd > shift2End - 1;
+  const shift3Start = needsEvening ? Math.max(shift2Start + 2, peakEnd - 2) : 0;
+  const shift3End = needsEvening ? Math.min(shift3Start + 4, activeEnd + 1) : 0;
+
+  const shifts = [
+    { name: 'Shift A (Core)', start: shift1Start, end: shift1End, color: '#0f766e', weeklyHrs: (shift1End - shift1Start) * 5 },
+    { name: 'Shift B (PM)', start: shift2Start, end: shift2End, color: '#1d4ed8', weeklyHrs: (shift2End - shift2Start) * 5 },
+  ];
+  if (needsEvening && shift3End > shift3Start) {
+    shifts.push({ name: 'Shift C (Evening)', start: shift3Start, end: shift3End, color: '#d97706', weeklyHrs: (shift3End - shift3Start) * 5 });
+  }
+
+  // ── 4. Shift recommendation table ──
+  let shiftTableHtml = '<table><thead><tr><th>Shift</th><th>Recommended Hours (CT)</th><th>Rationale</th><th class="text-right">Weekly Hrs</th></tr></thead><tbody>';
+  shifts.forEach((sh, i) => {
+    const bgs = ['', 'background:#eff6ff', 'background:#fffbeb'];
+    const peakOverlap = peakHours.filter(h => h >= sh.start && h < sh.end).length;
+    const highOverlap = highHours.filter(h => h >= sh.start && h < sh.end).length;
+    const rationale = peakOverlap > 0
+      ? `Covers ${peakOverlap} peak hour${peakOverlap>1?'s':''} (${peakHours.filter(h => h >= sh.start && h < sh.end).map(hlabel).join(', ')}). ${highOverlap} additional high-demand hours.`
+      : `Covers ${highOverlap} high-demand hour${highOverlap>1?'s':''} and extends evening coverage.`;
+    shiftTableHtml += `<tr style="${bgs[i]}"><td class="font-bold">${sh.name}</td><td>M-F, ${hlabel(sh.start)} - ${hlabel(sh.end)} CT</td><td style="font-size:12px;color:#6b7280">${rationale}</td><td class="text-right">${sh.weeklyHrs}</td></tr>`;
+  });
+  shiftTableHtml += '</tbody></table>';
+
+  // ── 5. Gap analysis table ──
+  const displayHours = [];
+  for (let h = Math.max(6, activeStart - 1); h <= Math.min(22, activeEnd + 1); h++) displayHours.push(h);
+
+  let gapTableHtml = '<table><thead><tr><th>Hour (CT)</th><th class="text-right">Avg Tickets</th><th>Demand Level</th><th class="text-right">Staff Covering</th><th>Gap?</th></tr></thead><tbody>';
+  displayHours.forEach(h => {
+    const d = weekdayHourly[h];
+    const staffCount = shifts.filter(sh => h >= sh.start && h < sh.end).length;
+    const level = d.avg >= peakThreshold ? 'PEAK' : d.avg >= highThreshold ? 'HIGH' : d.avg >= lowThreshold ? 'MODERATE' : 'LOW';
+    const levelColor = level === 'PEAK' ? 'var(--red)' : level === 'HIGH' ? 'var(--amber)' : level === 'MODERATE' ? 'var(--teal)' : 'var(--gray-400)';
+    const hasGap = (level === 'PEAK' || level === 'HIGH') && staffCount === 0;
+    const underStaffed = level === 'PEAK' && staffCount < 2;
+    const gapText = hasGap ? '<span style="color:var(--red);font-weight:700">NO COVERAGE</span>'
+      : underStaffed ? '<span style="color:var(--amber);font-weight:600">UNDERSTAFFED</span>'
+      : '<span style="color:var(--green)">OK</span>';
+    const rowBg = hasGap ? 'background:var(--red-bg)' : underStaffed ? 'background:var(--amber-bg)' : '';
+    gapTableHtml += `<tr style="${rowBg}"><td class="mono">${hlabel(h)}</td><td class="text-right">${d.avg}</td><td style="color:${levelColor};font-weight:600">${level}</td><td class="text-right">${staffCount}</td><td>${gapText}</td></tr>`;
+  });
+  gapTableHtml += '</tbody></table>';
+
+  // ── 6. Dynamic coverage map ──
+  const mapHours = [];
+  for (let h = Math.max(6, activeStart - 1); h <= Math.min(22, activeEnd); h++) mapHours.push(h);
+
+  let coverageMapHtml = '<table class="coverage-table"><thead><tr><th></th>';
+  mapHours.forEach(h => coverageMapHtml += `<th>${hlabel(h)}</th>`);
+  coverageMapHtml += '</tr></thead><tbody>';
+
+  // Demand row
+  coverageMapHtml += '<tr><td class="role-label">Demand</td>';
+  mapHours.forEach(h => {
+    const d = weekdayHourly[h];
+    const intensity = maxAvg > 0 ? d.avg / maxAvg : 0;
+    const bg = d.avg < lowThreshold ? '#f3f4f6' : `rgba(220,38,38,${0.1 + intensity * 0.7})`;
+    const fg = intensity > 0.5 ? '#fff' : '#374151';
+    coverageMapHtml += `<td style="background:${bg};color:${fg};font-size:10px">${d.avg}</td>`;
+  });
+  coverageMapHtml += '</tr>';
+
+  // Shift rows
+  const shiftColors = ['#0f766e','#1d4ed8','#d97706','#7c3aed'];
+  shifts.forEach((sh, si) => {
+    coverageMapHtml += `<tr><td class="role-label">${sh.name}</td>`;
+    mapHours.forEach(h => {
+      const on = h >= sh.start && h < sh.end;
+      coverageMapHtml += `<td style="background:${on ? shiftColors[si] : '#f3f4f6'};color:${on ? '#fff' : '#d1d5db'};font-weight:600">${on ? 'ON' : ''}</td>`;
+    });
+    coverageMapHtml += '</tr>';
+  });
+
+  // Total staff row
+  coverageMapHtml += '<tr style="border-top:2px solid #9ca3af"><td class="role-label" style="font-weight:700">Staff On</td>';
+  mapHours.forEach(h => {
+    const n = shifts.filter(sh => h >= sh.start && h < sh.end).length;
     const bg = n===0?'#fef2f2':n===1?'#fef9c3':n===2?'#ecfdf5':'#d1fae5';
     const fg = n===0?'#dc2626':n===1?'#ca8a04':'#059669';
-    html += `<td style="background:${bg};color:${fg};font-weight:700">${n}</td>`;
+    coverageMapHtml += `<td style="background:${bg};color:${fg};font-weight:700">${n}</td>`;
   });
-  html += '</tr></tbody></table>';
-  return html;
+  coverageMapHtml += '</tr></tbody></table>';
+
+  // ── 7. Weekend analysis ──
+  const wdTotal = DATA.dowVolume.filter(d => !['Sat','Sun'].includes(d.day)).reduce((s,d) => s + d.tickets, 0);
+  const weTotal = DATA.dowVolume.filter(d => ['Sat','Sun'].includes(d.day)).reduce((s,d) => s + d.tickets, 0);
+  const wePct = wdTotal + weTotal > 0 ? (weTotal / (wdTotal + weTotal) * 100) : 0;
+  const weAvgDaily = weTotal / Math.max(weekendDayCount, 1);
+  const wdAvgDaily = wdTotal / Math.max(weekdayCount, 1);
+  const satTickets = DATA.dowVolume.find(d => d.day === 'Sat')?.tickets || 0;
+  const sunTickets = DATA.dowVolume.find(d => d.day === 'Sun')?.tickets || 0;
+  const wePeakHour = weekendHourly.reduce((max, d) => d.avg > max.avg ? d : max, {avg:0, label:'N/A'});
+
+  let weekendHtml = `
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:12px">
+      <div class="kpi"><div class="label">${tip('Weekend Share','% of all tickets arriving on Sat+Sun.')}</div><div class="value ${wePct > 15 ? 'amber' : ''}">${Math.round(wePct*10)/10}%</div><div class="sub">of total volume</div></div>
+      <div class="kpi"><div class="label">${tip('Sat Volume','Total Saturday tickets in dataset.')}</div><div class="value">${satTickets.toLocaleString()}</div></div>
+      <div class="kpi"><div class="label">${tip('Sun Volume','Total Sunday tickets in dataset.')}</div><div class="value">${sunTickets.toLocaleString()}</div></div>
+      <div class="kpi"><div class="label">${tip('Weekend Peak Hour','Hour with highest average weekend ticket arrivals.')}</div><div class="value">${wePeakHour.label}</div><div class="sub">${wePeakHour.avg} avg tickets</div></div>
+    </div>`;
+
+  if (wePct > 10) {
+    weekendHtml += `<div class="info-amber"><p><strong>Weekend coverage recommended.</strong> ${Math.round(wePct)}% of volume arrives on weekends (avg ${Math.round(weAvgDaily*10)/10} tickets/day vs ${Math.round(wdAvgDaily*10)/10} weekday). Consider ${wePct > 20 ? 'full' : 'partial'} weekend shifts, especially around ${wePeakHour.label} CT.</p></div>`;
+  } else {
+    weekendHtml += `<div class="info-green"><p><strong>Weekend coverage optional.</strong> Only ${Math.round(wePct)}% of volume arrives on weekends. Current weekday-focused staffing is appropriate.</p></div>`;
+  }
+
+  return {
+    weekdayHourly,
+    peakThreshold,
+    gapTableHtml,
+    shiftTableHtml,
+    coverageMapHtml,
+    weekendHtml,
+    shifts,
+  };
 }
 
 // ---- INIT ----
