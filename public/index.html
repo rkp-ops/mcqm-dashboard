@@ -138,6 +138,36 @@
   .login-box .toggle-link button { background: none; border: none; color: var(--teal); cursor: pointer; font-weight: 600; font-size: 13px; }
   .auth-bar { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--gray-400); }
   .auth-bar button { background: none; border: none; color: var(--gray-400); cursor: pointer; font-size: 10px; text-decoration: underline; }
+
+  /* Tooltips */
+  .tip { position: relative; cursor: help; border-bottom: 1px dotted var(--gray-400); }
+  .tip .tip-text {
+    visibility: hidden; opacity: 0; position: absolute; z-index: 100;
+    bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    background: #1f2937; color: #fff; font-size: 12px; font-weight: 400;
+    padding: 8px 12px; border-radius: 6px; white-space: normal;
+    width: max-content; max-width: 300px; line-height: 1.5;
+    pointer-events: none; transition: opacity 0.15s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  }
+  .tip .tip-text::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: #1f2937;
+  }
+  .tip:hover .tip-text { visibility: visible; opacity: 1; }
+
+  /* Definitions tab styles */
+  .def-section { margin-bottom: 28px; }
+  .def-section h3 { font-size: 15px; font-weight: 700; color: var(--gray-800); margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--gray-200); }
+  .def-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .def-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; padding: 16px; }
+  .def-card .def-title { font-size: 13px; font-weight: 700; color: var(--teal); margin-bottom: 6px; }
+  .def-card .def-formula { font-family: monospace; font-size: 11px; background: var(--gray-50); padding: 4px 8px; border-radius: 4px; margin-bottom: 6px; color: var(--gray-700); }
+  .def-card .def-body { font-size: 12px; color: var(--gray-600); line-height: 1.6; }
+  .legend-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; }
+  .legend-table th { text-align: left; padding: 8px; background: var(--gray-50); color: var(--gray-600); font-weight: 600; border-bottom: 2px solid var(--gray-200); }
+  .legend-table td { padding: 8px; border-bottom: 1px solid var(--gray-100); vertical-align: top; }
+  .legend-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; }
 </style>
 </head>
 <body>
@@ -285,6 +315,7 @@ const TABS = [
   { id: 'cycle', label: 'Cycle Time' },
   { id: 'reopen', label: 'Reopens & Recontact' },
   { id: 'team', label: 'Team & Staffing' },
+  { id: 'definitions', label: '\u{1F4D6} Definitions' },
 ];
 
 let currentTab = 'overview';
@@ -625,28 +656,28 @@ function renderContent() {
   if (currentTab === 'overview') {
     el.innerHTML = `
       <div class="section">
-        <h2>Key Performance Indicators</h2>
+        <h2>${tip('Key Performance Indicators','High-level metrics across all tickets. Hover over any KPI label for details.')}</h2>
         <div class="kpi-grid">
-          <div class="kpi"><div class="label">Total Tickets</div><div class="value">${s.totalTickets.toLocaleString()}</div><div class="sub">Unique ticket keys</div></div>
-          <div class="kpi"><div class="label">Open Backlog</div><div class="value ${s.openCount>100?'amber':'green'}">${s.openCount}</div><div class="sub">Active tickets</div></div>
-          <div class="kpi"><div class="label">Median Cycle Time</div><div class="value">${s.medianCycleHrs}h</div><div class="sub">p75: ${s.p75CycleHrs}h | p90: ${s.p90CycleHrs}h</div></div>
-          <div class="kpi"><div class="label">Reopened (Snapshot)</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Currently in Reopened status</div></div>
-          <div class="kpi"><div class="label">Resolved</div><div class="value green">${s.resolvedCount.toLocaleString()}</div><div class="sub">${(s.resolvedCount/s.totalTickets*100).toFixed(1)}% resolution rate</div></div>
-          <div class="kpi"><div class="label">Recontact 24h</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">External comment after resolve</div></div>
-          <div class="kpi"><div class="label">Biz Hours Volume</div><div class="value">${s.bizHoursPct}%</div><div class="sub">8 AM - 8 PM CT, M-F</div></div>
-          <div class="kpi"><div class="label">After-Hours</div><div class="value amber">${(100-s.bizHoursPct).toFixed(1)}%</div><div class="sub">Outside coverage window</div></div>
+          <div class="kpi"><div class="label">${tip('Total Tickets','Count of unique Jira ticket keys in the dataset. Deduplicated from raw comment rows.')}</div><div class="value">${s.totalTickets.toLocaleString()}</div><div class="sub">Unique ticket keys</div></div>
+          <div class="kpi"><div class="label">${tip('Open Backlog','Tickets in Pending, Waiting for Customer, Reopened, In Progress, or Waiting for Support. Amber if &gt;100.')}</div><div class="value ${s.openCount>100?'amber':'green'}">${s.openCount}</div><div class="sub">Active tickets</div></div>
+          <div class="kpi"><div class="label">${tip('Median Cycle Time','Middle value of (Resolved - Created) in hours. p75/p90 show tail distribution.')}</div><div class="value">${s.medianCycleHrs}h</div><div class="sub">p75: ${s.p75CycleHrs}h | p90: ${s.p90CycleHrs}h</div></div>
+          <div class="kpi"><div class="label">${tip('Reopened (Snapshot)','Tickets currently in Reopened status. Point-in-time, not historical reopen event count.')}</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Currently in Reopened status</div></div>
+          <div class="kpi"><div class="label">${tip('Resolved','Tickets with a resolution date. Resolution rate = Resolved / Total.')}</div><div class="value green">${s.resolvedCount.toLocaleString()}</div><div class="sub">${(s.resolvedCount/s.totalTickets*100).toFixed(1)}% resolution rate</div></div>
+          <div class="kpi"><div class="label">${tip('Recontact 24h','% of resolved tickets that received an external comment within 24 hours. Proxy for resolution quality.')}</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">External comment after resolve</div></div>
+          <div class="kpi"><div class="label">${tip('Biz Hours Volume','% of tickets created during 8 AM - 8 PM CT, Monday through Friday.')}</div><div class="value">${s.bizHoursPct}%</div><div class="sub">8 AM - 8 PM CT, M-F</div></div>
+          <div class="kpi"><div class="label">${tip('After-Hours','% of tickets created outside business hours. Informs after-hours staffing needs.')}</div><div class="value amber">${(100-s.bizHoursPct).toFixed(1)}%</div><div class="sub">Outside coverage window</div></div>
         </div>
       </div>
       <div class="section">
-        <h2>Monthly Volume Trend</h2>
+        <h2>${tip('Monthly Volume Trend','Stacked bar chart of ticket creation by month, split by project (MCQM vs PSS). Last 18 months shown.')}</h2>
         <div class="chart-container"><canvas id="chart-monthly" height="260"></canvas></div>
       </div>
       <div class="section">
-        <h2>Workload Concentration</h2>
+        <h2>${tip('Workload Concentration','How much volume is carried by the top agents. High concentration = risk if that person is out.')}</h2>
         <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
-          <div class="kpi"><div class="label">Top 1 (${s.top1Name})</div><div class="value">${s.top1Pct}%</div></div>
-          <div class="kpi"><div class="label">Top 2 Agents</div><div class="value">${s.top2Pct}%</div></div>
-          <div class="kpi"><div class="label">Top 3 Agents</div><div class="value">${s.top3Pct}%</div></div>
+          <div class="kpi"><div class="label">${tip('Top 1 ('+s.top1Name+')','% of all resolved tickets handled by the single busiest agent. High % = bus-factor risk.')}</div><div class="value">${s.top1Pct}%</div></div>
+          <div class="kpi"><div class="label">${tip('Top 2 Agents','Combined % of resolved tickets by the top 2 agents.')}</div><div class="value">${s.top2Pct}%</div></div>
+          <div class="kpi"><div class="label">${tip('Top 3 Agents','Combined % of resolved tickets by the top 3 agents. If &gt;80%, workload is too concentrated.')}</div><div class="value">${s.top3Pct}%</div></div>
         </div>
       </div>`;
 
@@ -666,21 +697,21 @@ function renderContent() {
   else if (currentTab === 'demand') {
     el.innerHTML = `
       <div class="section">
-        <h2>Daily Ticket Volume (Last 60 Days)</h2>
+        <h2>${tip('Daily Ticket Volume (Last 60 Days)','Line chart of tickets created per calendar day. Helps identify volume spikes and trending patterns.')}</h2>
         <div class="chart-container"><canvas id="chart-daily" height="240"></canvas></div>
       </div>
       <div class="section">
-        <h2>Arrivals by Day of Week</h2>
+        <h2>${tip('Arrivals by Day of Week','Total tickets created on each day of the week across all data. Amber = weekends.')}</h2>
         <div class="chart-container"><canvas id="chart-dow" height="200"></canvas></div>
         <div class="note">Weekend = ${((DATA.dowVolume[5].tickets + DATA.dowVolume[6].tickets)/s.totalTickets*100).toFixed(1)}% of total volume.</div>
       </div>
       <div class="section">
-        <h2>Arrivals by Hour of Day (Central Time)</h2>
+        <h2>${tip('Arrivals by Hour of Day (Central Time)','Ticket creation by hour, converted to CT. Green = business hours (8AM-8PM), amber = after-hours.')}</h2>
         <div class="chart-container"><canvas id="chart-hourly" height="240"></canvas></div>
         <div class="note">Green = staffed hours (8 AM - 8 PM CT). Amber = after-hours.</div>
       </div>
       <div class="section">
-        <h2>Day x Hour Heatmap (Last 90 Days, Central Time)</h2>
+        <h2>${tip('Day x Hour Heatmap (Last 90 Days, Central Time)','Grid showing volume intensity by day-of-week and hour. Darker = more tickets. Reveals peak demand windows.')}</h2>
         <div style="overflow-x:auto">${renderHeatmap()}</div>
         <div class="note">Darker = higher volume. Coverage gap visible in evening hours.</div>
       </div>`;
@@ -716,16 +747,16 @@ function renderContent() {
   else if (currentTab === 'partners') {
     el.innerHTML = `
       <div class="section">
-        <h2>Volume by Partner (Top 15)</h2>
+        <h2>${tip('Volume by Partner (Top 15)','Total tickets per partner, sorted by volume descending. Top 15 shown.')}</h2>
         <div class="chart-container"><canvas id="chart-partner" height="340"></canvas></div>
       </div>
       <div class="section">
-        <h2>Post-Resolve Recontact Rate by Partner (24h)</h2>
+        <h2>${tip('Post-Resolve Recontact Rate by Partner (24h)','% of resolved tickets per partner that got an external comment within 24h. Red &gt;10%, amber &gt;7%. Min 5 resolved.')}</h2>
         <div class="chart-container"><canvas id="chart-recontact-partner" height="280"></canvas></div>
         <div class="note">Red = above 10%. Amber = above 7%.</div>
       </div>
       <div class="section">
-        <h2>Volume by Priority</h2>
+        <h2>${tip('Volume by Priority','Ticket count by Jira priority level across all data.')}</h2>
         <div class="chart-container"><canvas id="chart-priority" height="180"></canvas></div>
       </div>`;
 
@@ -760,18 +791,18 @@ function renderContent() {
   else if (currentTab === 'cycle') {
     el.innerHTML = `
       <div class="section">
-        <h2>Cycle Time Distribution (Created to Resolved)</h2>
+        <h2>${tip('Cycle Time Distribution (Created to Resolved)','Histogram of resolution times in buckets. Left-skewed = healthy (most resolved fast).')}</h2>
         <div class="chart-container"><canvas id="chart-ct" height="240"></canvas></div>
       </div>
       <div class="section">
-        <h2>Cycle Time by Partner</h2>
+        <h2>${tip('Cycle Time by Partner','Median and p75 resolution time per partner. Red if median &gt;4h or p75 &gt;20h. Top 10 by volume.')}</h2>
         <table>
           <thead><tr><th>Partner</th><th class="text-right">Resolved</th><th class="text-right">Median (hrs)</th><th class="text-right">p75 (hrs)</th></tr></thead>
           <tbody>${DATA.partnerCycleTime.map(p => `<tr><td class="font-bold">${p.partner}</td><td class="text-right">${p.tickets.toLocaleString()}</td><td class="text-right ${p.medianHrs>4?'text-red':''}">${p.medianHrs}</td><td class="text-right ${p.p75Hrs>20?'text-red':''}">${p.p75Hrs}</td></tr>`).join('')}</tbody>
         </table>
       </div>
       <div class="section">
-        <h2>Assignee Performance</h2>
+        <h2>${tip('Assignee Performance','Median and p75 cycle time per agent. Red if median &gt;10h or p75 &gt;20h. Top 12 by volume.')}</h2>
         <table>
           <thead><tr><th>Assignee</th><th class="text-right">Resolved</th><th class="text-right">Median (hrs)</th><th class="text-right">p75 (hrs)</th></tr></thead>
           <tbody>${DATA.assigneeStats.map(a => `<tr><td class="font-bold">${a.name}</td><td class="text-right">${a.tickets.toLocaleString()}</td><td class="text-right ${a.medianHrs>10?'text-red':''}">${a.medianHrs}</td><td class="text-right ${a.p75Hrs>20?'text-red':''}">${a.p75Hrs}</td></tr>`).join('')}</tbody>
@@ -791,18 +822,18 @@ function renderContent() {
   else if (currentTab === 'reopen') {
     el.innerHTML = `
       <div class="section">
-        <h2>Reopen & Recontact Analysis</h2>
+        <h2>${tip('Reopen &amp; Recontact Analysis','Snapshot-based reopen status + post-resolve recontact proxy. No changelog data available for true reopen event tracking.')}</h2>
         <div class="info-yellow">
           <p><strong>No changelog export available.</strong> Metrics below use snapshot status and post-resolution recontact proxies. Request a Jira changelog CSV export to enable full reopen event tracking.</p>
         </div>
         <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-top:12px">
-          <div class="kpi"><div class="label">Currently Reopened</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Snapshot status</div></div>
-          <div class="kpi"><div class="label">24h Recontact Rate</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">External comment after resolve</div></div>
-          <div class="kpi"><div class="label">72h Recontact Rate</div><div class="value amber">${s.recontact72hPct}%</div><div class="sub">External comment after resolve</div></div>
+          <div class="kpi"><div class="label">${tip('Currently Reopened','Tickets with Status = Reopened right now. Snapshot only, not historical.')}</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Snapshot status</div></div>
+          <div class="kpi"><div class="label">${tip('24h Recontact Rate','% of resolved tickets where customer commented within 24h of resolution. Best proxy for first-contact resolution quality.')}</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">External comment after resolve</div></div>
+          <div class="kpi"><div class="label">${tip('72h Recontact Rate','Wider 72h window. Captures delayed follow-ups. Higher than 24h by definition.')}</div><div class="value amber">${s.recontact72hPct}%</div><div class="sub">External comment after resolve</div></div>
         </div>
       </div>
       <div class="section">
-        <h2>Currently Reopened Tickets (${DATA.reopenedTickets.length})</h2>
+        <h2>${tip('Currently Reopened Tickets ('+DATA.reopenedTickets.length+')','Tickets currently in Reopened status. Red age if &gt;5 days since creation.')}</h2>
         <table>
           <thead><tr><th>Key</th><th>Partner</th><th>Assignee</th><th class="text-right">Age (days)</th></tr></thead>
           <tbody>${DATA.reopenedTickets.map(t => {
@@ -812,7 +843,7 @@ function renderContent() {
         </table>
       </div>
       <div class="section">
-        <h2>Recontact Rate by Partner (24h)</h2>
+        <h2>${tip('Recontact Rate by Partner (24h)','Per-partner recontact rate. Red &gt;10%, amber &gt;7%. Min 5 resolved tickets to appear.')}</h2>
         <table>
           <thead><tr><th>Partner</th><th class="text-right">Resolved</th><th class="text-right">Recontacted</th><th class="text-right">Rate</th></tr></thead>
           <tbody>${DATA.partnerRecontact.map(p => `<tr><td class="font-bold">${p.partner}</td><td class="text-right">${p.total.toLocaleString()}</td><td class="text-right">${p.count}</td><td class="text-right ${p.rate>10?'text-red':p.rate>7?'text-amber':''}">${p.rate}%</td></tr>`).join('')}</tbody>
@@ -823,7 +854,7 @@ function renderContent() {
   else if (currentTab === 'team') {
     el.innerHTML = `
       <div class="section">
-        <h2>Recommended Staffing (Central Time, M-F)</h2>
+        <h2>${tip('Recommended Staffing (Central Time, M-F)','Shift schedules derived from demand heatmap analysis. Optimized for peak coverage.')}</h2>
         <table>
           <thead><tr><th>Role</th><th>Schedule (CT)</th><th>Rationale</th><th class="text-right">Weekly Hrs</th></tr></thead>
           <tbody>
@@ -834,12 +865,12 @@ function renderContent() {
         </table>
       </div>
       <div class="section">
-        <h2>Coverage Map (M-F)</h2>
+        <h2>${tip('Coverage Map (M-F)','Which team members are scheduled during each hour. Row total shows overlap. 0 staff = coverage gap.')}</h2>
         <div style="overflow-x:auto">${renderCoverageMap()}</div>
         <div class="note">Peak overlap at 4-5 PM CT with 3 staff. Uncovered: 7-9 AM CT (very low volume).</div>
       </div>
       <div class="section">
-        <h2>Assignee Volume</h2>
+        <h2>${tip('Assignee Volume','Resolved tickets per agent. Horizontal bar shows workload distribution across the team.')}</h2>
         <div class="chart-container"><canvas id="chart-assignee" height="300"></canvas></div>
       </div>`;
 
@@ -852,6 +883,238 @@ function renderContent() {
       options: { indexAxis:'horizontal', responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
     });
   }
+
+  else if (currentTab === 'definitions') {
+    el.innerHTML = renderDefinitions();
+  }
+}
+
+// ---- TOOLTIP HELPER ----
+function tip(label, text) {
+  return `<span class="tip">${label}<span class="tip-text">${text}</span></span>`;
+}
+
+// ---- DEFINITIONS TAB ----
+function renderDefinitions() {
+  return `
+    <div class="section">
+      <h2>\u{1F4D6} Definitions &amp; Measurement Guide</h2>
+      <p style="font-size:13px;color:var(--gray-500);margin-bottom:20px;line-height:1.6">
+        This page explains every metric, KPI, and visual indicator used in this dashboard.
+        All timestamps are converted to Central Time (CT). Data is sourced from Google Sheets (Jira export).
+      </p>
+    </div>
+
+    <div class="def-section">
+      <h3>\u{1F4CA} Overview KPIs</h3>
+      <div class="def-grid">
+        <div class="def-card">
+          <div class="def-title">Total Tickets</div>
+          <div class="def-formula">COUNT(DISTINCT Key)</div>
+          <div class="def-body">The number of unique Jira ticket keys in the dataset. Each key (e.g., MCQM-1234) is counted once, even if multiple comment rows exist.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Open Backlog</div>
+          <div class="def-formula">Status IN (Pending, Waiting for Customer, Reopened, In Progress, Waiting for support)</div>
+          <div class="def-body">Tickets currently in an active/open status. Does not include resolved, closed, or cancelled tickets. Amber if &gt;100.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Median Cycle Time</div>
+          <div class="def-formula">MEDIAN(Resolved - Created) in hours</div>
+          <div class="def-body">The middle value of all resolution times. p75 = 75th percentile (75% resolved faster), p90 = 90th percentile. Lower is better.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Reopened (Snapshot)</div>
+          <div class="def-formula">Status = "Reopened"</div>
+          <div class="def-body">Tickets currently sitting in "Reopened" status. This is a point-in-time snapshot, not a count of reopen events. Colored red as these need immediate attention.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Resolved</div>
+          <div class="def-formula">COUNT(tickets WHERE Resolved IS NOT NULL)</div>
+          <div class="def-body">Tickets that have a resolution date. Resolution rate = Resolved / Total Tickets. Higher is better.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Recontact 24h Rate</div>
+          <div class="def-formula">External comment within 24h after Resolved date / Resolved count</div>
+          <div class="def-body">Proxy for first-contact resolution failure. If a customer comments within 24 hours of resolution, the issue likely was not fully resolved. Target: &lt;5%.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Biz Hours Volume</div>
+          <div class="def-formula">Created 8 AM - 8 PM CT, Mon-Fri / Total</div>
+          <div class="def-body">Percentage of tickets created during business hours. The remaining percentage represents after-hours volume that may need coverage.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Workload Concentration</div>
+          <div class="def-formula">Top N agents&apos; resolved count / Total resolved</div>
+          <div class="def-body">Shows how much volume is handled by the top 1, 2, and 3 agents. High concentration (&gt;50% for top 1) signals a bus-factor risk.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="def-section">
+      <h3>\u{1F501} Reopen &amp; Recontact</h3>
+      <div class="def-grid">
+        <div class="def-card">
+          <div class="def-title">Currently Reopened</div>
+          <div class="def-formula">Status = "Reopened" (snapshot)</div>
+          <div class="def-body">Point-in-time count of tickets in Reopened status. This dashboard uses Google Sheets data (no changelog), so we cannot track historical reopen events.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">24h Recontact Rate</div>
+          <div class="def-formula">(Resolved tickets with external comment within 24h) / Resolved count</div>
+          <div class="def-body">Best proxy for resolution quality. An external (customer) comment shortly after resolution suggests the ticket was not properly resolved. Used in place of true reopen tracking.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">72h Recontact Rate</div>
+          <div class="def-formula">(Resolved tickets with external comment within 72h) / Resolved count</div>
+          <div class="def-body">Wider window for recontact detection. Captures cases where customers take longer to follow up. Higher than 24h rate, but still indicates resolution quality issues.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Recontact by Partner</div>
+          <div class="def-formula">24h recontact count per partner / Partner resolved count</div>
+          <div class="def-body">Identifies which partners have the highest recontact rates. Partners with &gt;10% rate (red) may need process review or additional training. Minimum 5 resolved tickets required.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="def-section">
+      <h3>\u{23F1}\u{FE0F} Cycle Time</h3>
+      <div class="def-grid">
+        <div class="def-card">
+          <div class="def-title">Cycle Time</div>
+          <div class="def-formula">(Resolved timestamp - Created timestamp) in hours</div>
+          <div class="def-body">Total elapsed time from ticket creation to resolution. Includes all waiting time, weekends, and holidays. Not a "handle time" metric.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Percentiles (p75, p90)</div>
+          <div class="def-formula">75th and 90th percentile of cycle times</div>
+          <div class="def-body">p75 = 75% of tickets resolved within this time. p90 = 90% resolved. The gap between median and p90 shows tail-risk (outlier slow tickets).</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Cycle Time Distribution</div>
+          <div class="def-formula">Buckets: &lt;30m, 30m-1h, 1-2h, 2-4h, 4-8h, 8-24h, 1-2d, 2-7d, 7d+</div>
+          <div class="def-body">Shows how resolution times cluster. A healthy distribution is left-skewed (most tickets resolved quickly). Heavy right tail means systemic delays.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Assignee Performance</div>
+          <div class="def-formula">Median and p75 cycle time per agent</div>
+          <div class="def-body">Compares resolution speed across agents. Red highlight if median &gt;10h or p75 &gt;20h. Top 12 agents by volume shown.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="def-section">
+      <h3>\u{1F4C5} Demand &amp; Arrivals</h3>
+      <div class="def-grid">
+        <div class="def-card">
+          <div class="def-title">Daily Volume (Last 60 Days)</div>
+          <div class="def-body">Line chart of tickets created per day over the last 60 days. Helps identify volume spikes, trends, and seasonal patterns.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Day-of-Week Distribution</div>
+          <div class="def-body">Total tickets by day of week across all data. Amber bars = weekends. Shows whether weekend coverage is needed based on volume.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Hourly Distribution (CT)</div>
+          <div class="def-body">Ticket arrivals by hour of day in Central Time. Green bars = staffed hours (8 AM - 8 PM), amber = after-hours. Used for shift planning.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Day x Hour Heatmap</div>
+          <div class="def-body">Last 90 days of ticket arrivals plotted by day-of-week and hour-of-day. Darker cells = higher volume. Reveals coverage gaps and peak demand windows.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="def-section">
+      <h3>\u{1F465} Team &amp; Staffing</h3>
+      <div class="def-grid">
+        <div class="def-card">
+          <div class="def-title">Coverage Map</div>
+          <div class="def-body">Visual grid showing which team members are scheduled during each hour (7 AM - 8 PM CT). "Staff On" row shows total coverage per hour. Red = 0 staff, yellow = 1, green = 2+.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Assignee Volume</div>
+          <div class="def-body">Horizontal bar chart of resolved tickets per agent. Shows workload distribution and helps identify imbalances.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="def-section">
+      <h3>\u{1F3F7}\u{FE0F} Color &amp; Threshold Legend</h3>
+      <table class="legend-table">
+        <thead><tr><th>Indicator</th><th>Meaning</th><th>Threshold</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="legend-badge" style="background:var(--red-light);color:var(--red)">Red value</span></td>
+            <td>Critical / needs attention</td>
+            <td>Cycle time median &gt;10h, p75 &gt;20h, recontact &gt;10%, reopened ticket age &gt;5d</td>
+          </tr>
+          <tr>
+            <td><span class="legend-badge" style="background:var(--amber-light);color:var(--amber)">Amber value</span></td>
+            <td>Warning / approaching threshold</td>
+            <td>Recontact 7-10%, open backlog &gt;100, after-hours volume</td>
+          </tr>
+          <tr>
+            <td><span class="legend-badge" style="background:var(--green-light);color:var(--green)">Green value</span></td>
+            <td>Healthy / within target</td>
+            <td>Resolution rate, resolved count, recontact &lt;7%</td>
+          </tr>
+          <tr>
+            <td><span class="legend-badge" style="background:var(--teal-light);color:var(--teal)">Teal badge</span></td>
+            <td>MCQM project tickets</td>
+            <td>Project key starts with MCQM</td>
+          </tr>
+          <tr>
+            <td><span class="legend-badge" style="background:var(--blue-light);color:var(--blue)">Blue badge</span></td>
+            <td>PSS project tickets</td>
+            <td>Project key starts with PSS</td>
+          </tr>
+          <tr>
+            <td style="font-size:12px">Heatmap cells (darker teal)</td>
+            <td>Higher ticket volume</td>
+            <td>Color intensity proportional to count / max count in 90-day window</td>
+          </tr>
+          <tr>
+            <td style="font-size:12px">Coverage map: <span style="color:var(--red);font-weight:700">0</span> / <span style="color:#ca8a04;font-weight:700">1</span> / <span style="color:var(--green);font-weight:700">2+</span></td>
+            <td>Staff on during that hour</td>
+            <td>0 = no coverage (red bg), 1 = single coverage (yellow bg), 2+ = overlap (green bg)</td>
+          </tr>
+          <tr>
+            <td><span class="legend-badge" style="background:#eff6ff;color:#1e40af">Blue info box</span></td>
+            <td>Informational context</td>
+            <td>General guidance or methodology notes</td>
+          </tr>
+          <tr>
+            <td><span class="legend-badge" style="background:#fefce8;color:#854d0e">Yellow info box</span></td>
+            <td>Data limitation warning</td>
+            <td>Flags where data is incomplete (e.g., no changelog for reopen tracking)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="def-section">
+      <h3>\u{1F4E1} Data Sources &amp; Refresh</h3>
+      <div class="def-grid">
+        <div class="def-card">
+          <div class="def-title">Data Source</div>
+          <div class="def-body">Google Sheets export from Jira. Contains ticket fields (Key, Status, Created, Resolved, Partner, Issue Type, Priority, Assignee, Reporter) and comment metadata (date, author, internal flag).</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Refresh Interval</div>
+          <div class="def-body">Auto-refreshes every 60 minutes via Netlify serverless function. Click "Refresh Now" for on-demand update. Live status dot shows connection state (green = connected, red = error).</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Deduplication</div>
+          <div class="def-body">Raw data may have multiple rows per ticket (one per comment). The dashboard deduplicates to unique ticket keys, using the first row for ticket metadata and all rows for comment analysis.</div>
+        </div>
+        <div class="def-card">
+          <div class="def-title">Known Limitations</div>
+          <div class="def-body">No Jira changelog data &mdash; cannot track true reopen events, only current "Reopened" status snapshot. Recontact rate is a proxy for resolution quality, not a true reopen metric. Timestamps assumed Eastern, converted to Central.</div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderHeatmap() {
