@@ -295,6 +295,19 @@ async function fetchData() {
     }
     const json = await resp.json();
 
+    // Background function is still loading — auto-retry in 15 seconds
+    if (json.loading) {
+      document.getElementById('loading-state').innerHTML = `
+        <div style="text-align:center; padding:60px 20px;">
+          <div class="spinner"></div>
+          <h2 style="color:var(--text-primary); margin-top:16px;">Loading data from Jira...</h2>
+          <p style="color:var(--text-muted);">First load takes 1-2 minutes while we fetch all ticket history. Auto-refreshing...</p>
+        </div>`;
+      status.textContent = 'Loading...';
+      setTimeout(fetchData, 15000);
+      return;
+    }
+
     // Server returns pre-computed metrics
     generatedSchedule = null; // Reset schedule to regenerate with fresh data
     if (json.computed) {
