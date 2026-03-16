@@ -60,9 +60,21 @@ function transformIssue(issue) {
     isInternal: c.jsdPublic === false || (c.visibility && c.visibility.type === 'role'),
   }));
 
-  // Reopen detection from current status (changelog removed for performance)
-  const statusName = (f.status?.name || '').toLowerCase();
-  const reopenCount = statusName === 'reopened' ? 1 : 0;
+  // Changelog: reopens
+  const changelog = (issue.changelog?.histories || []);
+  let reopenCount = 0;
+  const FINAL_STATUSES = ['done', 'closed', 'resolved', 'cancelled', 'declined', "won't do", 'wont do'];
+  for (const history of changelog) {
+    for (const item of history.items || []) {
+      if (item.field === 'status') {
+        const fromLower = (item.fromString || '').toLowerCase();
+        const toLower = (item.toString || '').toLowerCase();
+        if (FINAL_STATUSES.includes(fromLower) && !FINAL_STATUSES.includes(toLower)) {
+          reopenCount++;
+        }
+      }
+    }
+  }
 
   // External comments for recontact tracking
   const extComments = comments.filter(c => !c.isInternal).map(c => ({ dt: c.created }));
@@ -70,7 +82,6 @@ function transformIssue(issue) {
   // Partner: extract from labels, components, or description
   const labels = (f.labels || []);
   const components = (f.components || []).map(c => c.name || '');
-  // Use first component as partner if available
   const partner = components[0] || labels[0] || '';
 
   return {
@@ -101,7 +112,6 @@ function computeMetrics(tickets, filterFrom, filterTo) {
   const dowO = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const hl = h => `${h%12||12} ${h<12?'AM':'PM'}`;
 
-  // Apply date filter
   if (filterFrom || filterTo) {
     tickets = tickets.filter(t => {
       if (!t.created) return false;
@@ -113,31 +123,25 @@ function computeMetrics(tickets, filterFrom, filterTo) {
   }
 
   const total = tickets.length;
-
-  // Project keys
   const pkC = {};
   tickets.forEach(t => pkC[t.projectKey] = (pkC[t.projectKey]||0)+1);
 
-  // Open/reopened
   const openS = ['Pending','Waiting for Customer','Reopened','In Progress','Waiting for support','Open','To Do'];
   const openCount = tickets.filter(t => openS.includes(t.status)).length;
-  const reopenedTix = tickets.filter(t => t.status === 'Reopened').map(t => ({
+  const reopenedTix = tickets.filter(t => t.reopenCount > 0).map(t => ({
     key: t.key, partner: t.partner, assignee: t.assignee,
     ageDays: t.created ? Math.round((now - new Date(t.created))/864e5) : 0,
     created: t.created,
   }));
 
-  // Resolved & cycle time
   const resolved = tickets.filter(t => t.resolved && t.created);
   const cts = resolved.map(t => (new Date(t.resolved) - new Date(t.created))/36e5).filter(h => h >= 0);
   const medCT = med(cts), p75CT = ptl(cts,75), p90CT = ptl(cts,90);
 
-  // CT distribution
   const ctB = [{l:'<30m',x:.5},{l:'30m-1h',x:1},{l:'1-2h',x:2},{l:'2-4h',x:4},{l:'4-8h',x:8},{l:'8-24h',x:24},{l:'1-2d',x:48},{l:'2-7d',x:168},{l:'7d+',x:1e9}];
   const ctDist = ctB.map(b=>({bucket:b.l,tickets:0}));
   cts.forEach(h => { for(let i=0;i<ctB.length;i++) if(h<=ctB[i].x){ctDist[i].tickets++;break;} });
 
-  // Monthly
   const mMap={}, mPK={};
   tickets.forEach(t => {
     if(!t.created) return;
@@ -150,7 +154,6 @@ function computeMetrics(tickets, filterFrom, filterTo) {
   const monthlyVolume = Object.entries(mMap).sort((a,b)=>a[0].localeCompare(b[0])).slice(-18).map(([m,v])=>({month:m,tickets:v}));
   const monthlyByPK = Object.entries(mPK).sort((a,b)=>a[0].localeCompare(b[0])).slice(-18).map(([m,p])=>({month:m,MCQM:p.MCQM||0,PSS:p.PSS||0,FHPS:p.FHPS||0,OAC:p.OAC||0}));
 
-  // Daily last 60
   const dMap={};
   tickets.forEach(t => {
     if(!t.created) return;
@@ -161,23 +164,19 @@ function computeMetrics(tickets, filterFrom, filterTo) {
   });
   const dailyVolume = Object.entries(dMap).sort((a,b)=>a[0].localeCompare(b[0])).map(([d,v])=>({date:d,tickets:v}));
 
-  // DOW
   const dowMap={}; dowO.forEach(d=>dowMap[d]=0);
   tickets.forEach(t => { if(t.created) { const cd = new Date(t.created); dowMap[dowN[cd.getDay()]]++; } });
   const dowVolume = dowO.map(d=>({day:d,tickets:dowMap[d]}));
 
-  // Hourly (CT = UTC-6 roughly; adjust from UTC)
   const hMap={}; for(let h=0;h<24;h++) hMap[h]=0;
   tickets.forEach(t => {
     if(!t.created) return;
     const cd = new Date(t.created);
-    // Convert to Central Time (approximate: UTC-6)
     const ctH = (cd.getUTCHours() - 6 + 24) % 24;
     hMap[ctH]++;
   });
   const hourlyVolume = Array.from({length:24},(_,h)=>({hour:h,label:hl(h),tickets:hMap[h]}));
 
-  // Biz hours
   const bizCount = tickets.filter(t => {
     if(!t.created) return false;
     const cd = new Date(t.created);
@@ -186,7 +185,6 @@ function computeMetrics(tickets, filterFrom, filterTo) {
     return ctH>=8 && ctH<20 && !['Sat','Sun'].includes(dw);
   }).length;
 
-  // Heatmap last 90d
   const hmC={}; dowO.forEach(d=>{for(let h=0;h<24;h++) hmC[`${d}-${h}`]=0;});
   tickets.forEach(t => {
     if(!t.created) return;
@@ -197,17 +195,14 @@ function computeMetrics(tickets, filterFrom, filterTo) {
   });
   const heatmap=[]; dowO.forEach(d=>{for(let h=0;h<24;h++) heatmap.push({day:d,hour:h,label:hl(h),count:hmC[`${d}-${h}`]});});
 
-  // Partner volume
   const pvMap={};
   tickets.forEach(t=>{if(t.partner) pvMap[t.partner]=(pvMap[t.partner]||0)+1;});
   const partnerVolume = Object.entries(pvMap).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([p,v])=>({partner:p,tickets:v}));
 
-  // Priority
   const prMap={};
   tickets.forEach(t=>{prMap[t.priority]=(prMap[t.priority]||0)+1;});
   const priorityVolume = Object.entries(prMap).sort((a,b)=>b[1]-a[1]).map(([p,v])=>({priority:p,tickets:v}));
 
-  // Assignee stats (resolved only)
   const aRes={};
   resolved.forEach(t=>{
     if(!t.assignee) return;
@@ -217,25 +212,21 @@ function computeMetrics(tickets, filterFrom, filterTo) {
   const assigneeStats = Object.entries(aRes).sort((a,b)=>b[1].length-a[1].length).slice(0,12)
     .map(([n,c])=>({name:n,tickets:c.length,medianHrs:r1(med(c)),p75Hrs:r1(ptl(c,75))}));
 
-  // Assignee volume (all tickets)
   const assigneeAll={};
   tickets.forEach(t=>{if(t.assignee) assigneeAll[t.assignee]=(assigneeAll[t.assignee]||0)+1;});
   const assigneeVolume = Object.entries(assigneeAll).sort((a,b)=>b[1]-a[1]).slice(0,12)
     .map(([name,count])=>({name, tickets:count}));
 
-  // MTD
   const mtdStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const mtdTickets = tickets.filter(t => t.created && new Date(t.created) >= mtdStart);
   const mtdByPK = {};
   mtdTickets.forEach(t => { mtdByPK[t.projectKey] = (mtdByPK[t.projectKey]||0)+1; });
 
-  // Partner cycle time
   const pctMap={};
   resolved.forEach(t=>{if(!t.partner) return; if(!pctMap[t.partner]) pctMap[t.partner]=[]; pctMap[t.partner].push((new Date(t.resolved)-new Date(t.created))/36e5);});
   const partnerCycleTime = Object.entries(pctMap).sort((a,b)=>b[1].length-a[1].length).slice(0,10)
     .map(([p,c])=>({partner:p,tickets:c.length,medianHrs:r1(med(c)),p75Hrs:r1(ptl(c,75))}));
 
-  // Recontact proxy (external comments after resolution)
   const resMap={};
   resolved.forEach(t=>{resMap[t.key]={resolved:new Date(t.resolved),partner:t.partner,assignee:t.assignee};});
   const rc24Keys=new Set(), rc72Keys=new Set(), rcByPartner={};
@@ -259,18 +250,15 @@ function computeMetrics(tickets, filterFrom, filterTo) {
     .map(([p,keys])=>({partner:p,count:keys.size,total:pResMap[p]||0,rate:pResMap[p]?r1(keys.size/pResMap[p]*100):0}))
     .filter(x=>x.total>=5).sort((a,b)=>b.rate-a.rate).slice(0,12);
 
-  // Workload concentration
   const sa = Object.entries(aRes).sort((a,b)=>b[1].length-a[1].length);
   const top1Pct = sa[0]?r1(sa[0][1].length/resolved.length*100):0;
   const top2Pct = r1(sa.slice(0,2).reduce((s,a)=>s+a[1].length,0)/Math.max(resolved.length,1)*100);
   const top3Pct = r1(sa.slice(0,3).reduce((s,a)=>s+a[1].length,0)/Math.max(resolved.length,1)*100);
 
-  // Date range
   const dates = tickets.map(t=>t.created?new Date(t.created):null).filter(Boolean).sort((a,b)=>a-b);
   const fmt = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   const dateRange = dates.length ? `${fmt(dates[0])} - ${fmt(dates[dates.length-1])}` : 'N/A';
 
-  // Status counts
   const statusCounts = {};
   tickets.forEach(t => { statusCounts[t.status] = (statusCounts[t.status]||0)+1; });
 
@@ -310,23 +298,31 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Check for date range filter params
     const params = event.queryStringParameters || {};
     const filterFrom = params.from ? new Date(params.from + 'T00:00:00Z') : null;
     const filterTo = params.to ? new Date(params.to + 'T23:59:59Z') : null;
 
-    // Fetch tickets: all open + last 90 days resolved, with changelog for reopen tracking
-    const jql = `project in (PSS, MCQM, FHPS, OAC) AND (statusCategory != Done OR resolved >= -90d) ORDER BY created ASC`;
     const fields = [
       'summary','status','priority','assignee','reporter','created','updated',
       'issuetype','labels','components','comment','resolution','resolutiondate',
     ];
 
-    const allIssues = await jiraSearchAll({ jql, fields });
+    // Fetch open and resolved in parallel per-project for speed
+    const projects = ['PSS', 'MCQM', 'FHPS', 'OAC'];
+    const fetches = projects.map(p =>
+      jiraSearchAll({
+        jql: `project = ${p} AND (statusCategory != Done OR resolved >= -90d) ORDER BY created ASC`,
+        fields,
+        expand: 'changelog',
+      })
+    );
+
+    const results = await Promise.all(fetches);
+    const allIssues = results.flat();
     const tickets = allIssues.map(issue => transformIssue(issue));
 
     // Filter by projects if specified
-    const projectsParam = params.projects; // comma-separated, e.g. "PSS,MCQM"
+    const projectsParam = params.projects;
     let filteredTickets = tickets;
     if (projectsParam) {
       const allowedProjects = projectsParam.split(',').map(p => p.trim().toUpperCase());
