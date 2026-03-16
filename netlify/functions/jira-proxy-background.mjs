@@ -64,7 +64,9 @@ function transformIssue(issue) {
   const extComments = comments.filter(c => !c.isInternal).map(c => ({ dt: c.created }));
   const labels = (f.labels || []);
   const components = (f.components || []).map(c => c.name || '');
-  const partner = components[0] || labels[0] || '';
+  // FIXED: Partner comes ONLY from Jira Components — never from labels
+  // Labels are a separate free-text field tracked independently
+  const partner = components[0] || '';
 
   return {
     key, projectKey,
@@ -77,7 +79,7 @@ function transformIssue(issue) {
     reporter: f.reporter?.displayName || 'Unknown',
     created: f.created,
     resolved: f.resolutiondate,
-    partner, reopenCount, extComments,
+    partner, labels, reopenCount, extComments,
     jiraUrl: `https://${JIRA_DOMAIN}/browse/${key}`,
   };
 }
@@ -163,6 +165,11 @@ function computeMetrics(tickets) {
   tickets.forEach(t=>{if(t.partner) pvMap[t.partner]=(pvMap[t.partner]||0)+1;});
   const partnerVolume = Object.entries(pvMap).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([p,v])=>({partner:p,tickets:v}));
 
+  // Label volume — separate from partner (labels are free-text)
+  const lvMap={};
+  tickets.forEach(t=>{(t.labels||[]).forEach(l=>{lvMap[l]=(lvMap[l]||0)+1;});});
+  const labelVolume = Object.entries(lvMap).sort((a,b)=>b[1]-a[1]).slice(0,30).map(([label,count])=>({label,tickets:count}));
+
   const prMap={};
   tickets.forEach(t=>{prMap[t.priority]=(prMap[t.priority]||0)+1;});
   const priorityVolume = Object.entries(prMap).sort((a,b)=>b[1]-a[1]).map(([p,v])=>({priority:p,tickets:v}));
@@ -226,6 +233,15 @@ function computeMetrics(tickets) {
   const statusCounts = {};
   tickets.forEach(t => { statusCounts[t.status] = (statusCounts[t.status]||0)+1; });
 
+  // Open tickets for drill-down (backlog detail)
+  const openS = ['Pending','Waiting for Customer','Reopened','In Progress','Waiting for support','Open','To Do'];
+  const openTickets = tickets.filter(t => openS.includes(t.status)).map(t => ({
+    key: t.key, projectKey: t.projectKey, summary: t.summary, status: t.status,
+    partner: t.partner, labels: t.labels, assignee: t.assignee, priority: t.priority,
+    created: t.created, ageDays: t.created ? Math.round((now - new Date(t.created))/864e5) : 0,
+    jiraUrl: t.jiraUrl,
+  })).sort((a,b) => b.ageDays - a.ageDays);
+
   return {
     computed: true,
     cachedAt: now.toISOString(),
@@ -239,8 +255,8 @@ function computeMetrics(tickets) {
       mtdTotal: mtdTickets.length, mtdByPK,
     },
     monthlyVolume, monthlyByPK, dailyVolume, dowVolume, hourlyVolume, heatmap,
-    partnerVolume, priorityVolume, assigneeStats, assigneeVolume, cycleTimeDist: ctDist,
-    partnerCycleTime, partnerRecontact, reopenedTickets: reopenedTix, statusCounts,
+    partnerVolume, labelVolume, priorityVolume, assigneeStats, assigneeVolume, cycleTimeDist: ctDist,
+    partnerCycleTime, partnerRecontact, reopenedTickets: reopenedTix, openTickets, statusCounts,
   };
 }
 

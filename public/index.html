@@ -119,6 +119,37 @@
 
   .hidden { display: none; }
 
+  /* Clickable KPI cards */
+  .kpi.clickable { cursor: pointer; transition: all 0.15s; border: 2px solid transparent; }
+  .kpi.clickable:hover { border-color: var(--teal); box-shadow: 0 2px 8px rgba(15,118,110,0.12); transform: translateY(-1px); }
+  .kpi.clickable .drill-hint { font-size: 10px; color: var(--gray-400); margin-top: 4px; opacity: 0; transition: opacity 0.15s; }
+  .kpi.clickable:hover .drill-hint { opacity: 1; }
+
+  /* Drill-down panel */
+  .drill-panel { background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; padding: 16px; margin-top: 12px; max-height: 400px; overflow-y: auto; }
+  .drill-panel h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .drill-panel .close-btn { cursor: pointer; font-size: 18px; color: var(--gray-400); padding: 4px 8px; border-radius: 4px; }
+  .drill-panel .close-btn:hover { background: var(--gray-100); color: var(--gray-700); }
+  .drill-panel table { font-size: 12px; }
+  .drill-panel td a { color: var(--teal); text-decoration: none; font-weight: 600; }
+  .drill-panel td a:hover { text-decoration: underline; }
+
+  /* Collapsible alert cards */
+  .alert-card { border-radius: 8px; margin-bottom: 8px; overflow: hidden; transition: all 0.2s; }
+  .alert-card-header { padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .alert-card-header:hover { filter: brightness(0.97); }
+  .alert-card-body { padding: 0 16px 12px; font-size: 12px; line-height: 1.6; }
+  .alert-card-body table { margin-top: 8px; }
+  .alert-card.red { background: var(--red-bg); border: 1px solid #fca5a5; }
+  .alert-card.red .alert-card-header { color: #991b1b; }
+  .alert-card.amber { background: var(--amber-bg); border: 1px solid #fcd34d; }
+  .alert-card.amber .alert-card-header { color: #92400e; }
+  .alert-card.green { background: var(--green-bg); border: 1px solid #a7f3d0; }
+  .alert-card.green .alert-card-header { color: #065f46; }
+  .alert-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 700; }
+  .alert-badge.red { background: #dc2626; color: #fff; }
+  .alert-badge.amber { background: #d97706; color: #fff; }
+
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
 
@@ -217,6 +248,7 @@ const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'demand', label: 'Demand & Arrivals' },
   { id: 'partners', label: 'Partners & Volume' },
+  { id: 'labels', label: 'Labels & Tags' },
   { id: 'cycle', label: 'Cycle Time' },
   { id: 'reopen', label: 'Reopens & Recontact' },
   { id: 'team', label: 'Team & Staffing' },
@@ -242,11 +274,11 @@ const SCHED_COVERAGE = { start: 8, end: 20 }; // required coverage window
 
 const STAFF = [
   { name: 'Zoie', color: 'teal', tz: 'Central',
-    baseStart: 9, baseEnd: 17, flexHours: 1,
-    fixedDaysOff: ['Sat','Sun'], minDaysOff: 2, maxHrs: null, salaried: true },
-  { name: 'Brionna', color: 'blue', tz: 'Pacific',
-    baseStart: 12, baseEnd: 20.5, flexHours: null,
-    fixedDaysOff: [], minDaysOff: 2, maxHrs: 46, salaried: false },
+    baseStart: 8, baseEnd: 17, flexHours: 1,
+    fixedDaysOff: ['Sat','Sun'], minDaysOff: 2, maxHrs: null, maxDailyHrs: 9, salaried: true },
+  { name: 'Brionna', color: 'blue', tz: 'Central',
+    baseStart: 8, baseEnd: 16.5, flexHours: null,
+    fixedDaysOff: [], minDaysOff: 2, maxHrs: 45, salaried: false },
   { name: 'Bella', color: 'amber', tz: 'Central',
     baseStart: 8, baseEnd: 16, flexHours: null,
     fixedDaysOff: [], minDaysOff: 2, maxHrs: 35, salaried: false },
@@ -802,17 +834,19 @@ function renderContent() {
     el.innerHTML = `
       <div class="section">
         <h2>Key Performance Indicators</h2>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:-12px;margin-bottom:12px">Click any metric to drill down</div>
         <div class="kpi-grid">
-          <div class="kpi"><div class="label">Total Tickets</div><div class="value">${s.totalTickets.toLocaleString()}</div><div class="sub">Unique ticket keys</div></div>
-          <div class="kpi"><div class="label">Open Backlog</div><div class="value ${s.openCount>100?'amber':'green'}">${s.openCount}</div><div class="sub">Active tickets</div></div>
-          <div class="kpi"><div class="label">Median Cycle Time</div><div class="value">${s.medianCycleHrs}h</div><div class="sub">p75: ${s.p75CycleHrs}h | p90: ${s.p90CycleHrs}h</div></div>
-          <div class="kpi"><div class="label">Reopened (Snapshot)</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Currently in Reopened status</div></div>
-          <div class="kpi"><div class="label">Resolved</div><div class="value green">${s.resolvedCount.toLocaleString()}</div><div class="sub">${(s.resolvedCount/s.totalTickets*100).toFixed(1)}% resolution rate</div></div>
-          <div class="kpi"><div class="label">Recontact 24h</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">External comment after resolve</div></div>
-          <div class="kpi"><div class="label">Biz Hours Volume</div><div class="value">${s.bizHoursPct}%</div><div class="sub">8 AM - 8 PM CT, M-F</div></div>
-          <div class="kpi"><div class="label">After-Hours</div><div class="value amber">${(100-s.bizHoursPct).toFixed(1)}%</div><div class="sub">Outside coverage window</div></div>
+          <div class="kpi clickable" onclick="drillKPI('total')"><div class="label">Total Tickets</div><div class="value">${s.totalTickets.toLocaleString()}</div><div class="sub">Unique ticket keys</div><div class="drill-hint">Click to view by status</div></div>
+          <div class="kpi clickable" onclick="drillKPI('backlog')"><div class="label">Open Backlog</div><div class="value ${s.openCount>100?'amber':'green'}">${s.openCount}</div><div class="sub">Active tickets</div><div class="drill-hint">Click to view open tickets</div></div>
+          <div class="kpi clickable" onclick="switchTab('cycle')"><div class="label">Median Cycle Time</div><div class="value">${s.medianCycleHrs}h</div><div class="sub">p75: ${s.p75CycleHrs}h | p90: ${s.p90CycleHrs}h</div><div class="drill-hint">Click for CT breakdown</div></div>
+          <div class="kpi clickable" onclick="drillKPI('reopened')"><div class="label">Reopened (Snapshot)</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Currently in Reopened status</div><div class="drill-hint">Click to view reopened</div></div>
+          <div class="kpi clickable" onclick="drillKPI('resolved')"><div class="label">Resolved</div><div class="value green">${s.resolvedCount.toLocaleString()}</div><div class="sub">${(s.resolvedCount/s.totalTickets*100).toFixed(1)}% resolution rate</div><div class="drill-hint">Click for resolution details</div></div>
+          <div class="kpi clickable" onclick="switchTab('reopen')"><div class="label">Recontact 24h</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">External comment after resolve</div><div class="drill-hint">Click for recontact analysis</div></div>
+          <div class="kpi clickable" onclick="switchTab('demand')"><div class="label">Biz Hours Volume</div><div class="value">${s.bizHoursPct}%</div><div class="sub">8 AM - 8 PM CT, M-F</div><div class="drill-hint">Click for demand patterns</div></div>
+          <div class="kpi clickable" onclick="switchTab('demand')"><div class="label">After-Hours</div><div class="value amber">${(100-s.bizHoursPct).toFixed(1)}%</div><div class="sub">Outside coverage window</div><div class="drill-hint">Click for hourly breakdown</div></div>
         </div>
       </div>
+      <div id="drill-panel-container"></div>
       <div class="section">
         <h2>Monthly Volume Trend</h2>
         <div class="chart-container"><canvas id="chart-monthly" height="260"></canvas></div>
@@ -820,9 +854,9 @@ function renderContent() {
       <div class="section">
         <h2>Workload Concentration</h2>
         <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
-          <div class="kpi"><div class="label">Top 1 (${s.top1Name})</div><div class="value">${s.top1Pct}%</div></div>
-          <div class="kpi"><div class="label">Top 2 Agents</div><div class="value">${s.top2Pct}%</div></div>
-          <div class="kpi"><div class="label">Top 3 Agents</div><div class="value">${s.top3Pct}%</div></div>
+          <div class="kpi clickable" onclick="switchTab('team')"><div class="label">Top 1 (${s.top1Name})</div><div class="value">${s.top1Pct}%</div><div class="drill-hint">View team breakdown</div></div>
+          <div class="kpi clickable" onclick="switchTab('team')"><div class="label">Top 2 Agents</div><div class="value">${s.top2Pct}%</div><div class="drill-hint">View team breakdown</div></div>
+          <div class="kpi clickable" onclick="switchTab('team')"><div class="label">Top 3 Agents</div><div class="value">${s.top3Pct}%</div><div class="drill-hint">View team breakdown</div></div>
         </div>
       </div>`;
 
@@ -998,23 +1032,58 @@ function renderContent() {
       </div>`;
   }
 
-  else if (currentTab === 'team') {
+  else if (currentTab === 'labels') {
+    const lv = DATA.labelVolume || [];
     el.innerHTML = `
       <div class="section">
-        <h2>Recommended Staffing (Central Time, M-F)</h2>
-        <table>
-          <thead><tr><th>Role</th><th>Schedule (CT)</th><th>Rationale</th><th class="text-right">Weekly Hrs</th></tr></thead>
-          <tbody>
-            <tr><td class="font-bold">Zoie</td><td>M-F, 9:00 AM - 5:00 PM CT</td><td style="font-size:12px;color:#6b7280">Covers midday ramp and early afternoon peak.</td><td class="text-right">40</td></tr>
-            <tr style="background:#eff6ff"><td class="font-bold">Brionna</td><td>M-F, 12:00 PM - 8:30 PM CT<br><span style="font-size:11px;color:#6b7280">(10:00 AM - 6:30 PM PT)</span></td><td style="font-size:12px;color:#6b7280">Covers absolute peak (2-6 PM CT). 10 AM PT avoids early start.</td><td class="text-right">42.5</td></tr>
-            <tr style="background:#fffbeb"><td class="font-bold">Bella</td><td>M-F, 4:00 PM - 8:00 PM CT<br><span style="font-size:11px;color:#6b7280">+ Sun 2:00 - 8:00 PM CT</span></td><td style="font-size:12px;color:#6b7280">Evening coverage + Sunday peak. 35 hrs/wk.</td><td class="text-right">35</td></tr>
-          </tbody>
-        </table>
+        <h2>Ticket Volume by Label (Top 30)</h2>
+        <div style="font-size:12px;color:var(--gray-500);margin-top:-12px;margin-bottom:12px">Labels are free-text tags set on Jira tickets — distinct from the Partner (Component) field</div>
+        <div class="chart-container"><canvas id="chart-labels" height="400"></canvas></div>
       </div>
       <div class="section">
-        <h2>Coverage Map (M-F)</h2>
-        <div style="overflow-x:auto">${renderCoverageMap()}</div>
-        <div class="note">Peak overlap at 4-5 PM CT with 3 staff. Uncovered: 7-9 AM CT (very low volume).</div>
+        <h2>Label Detail</h2>
+        <table>
+          <thead><tr><th>Label</th><th class="text-right">Tickets</th><th class="text-right">% of Total</th></tr></thead>
+          <tbody>${lv.map(l => `<tr><td class="font-bold">${l.label}</td><td class="text-right">${l.tickets.toLocaleString()}</td><td class="text-right">${(l.tickets / DATA.summary.totalTickets * 100).toFixed(1)}%</td></tr>`).join('')}</tbody>
+        </table>
+        ${lv.length === 0 ? '<div class="info-box info-amber" style="margin-top:12px">No label data available. Labels will appear once data refreshes from Jira.</div>' : ''}
+      </div>`;
+
+    if (lv.length > 0) {
+      makeChart('chart-labels', {
+        type: 'bar',
+        data: {
+          labels: lv.map(l => l.label),
+          datasets: [{ data: lv.map(l => l.tickets), backgroundColor: '#7c3aed', borderRadius: 4 }]
+        },
+        options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+      });
+    }
+  }
+
+  else if (currentTab === 'team') {
+    // Dynamic staffing info from STAFF config
+    const staffRows = STAFF.map(p => {
+      const daysOff = p.fixedDaysOff.length > 0 ? p.fixedDaysOff.join(', ') : 'Rotating (2/week)';
+      const schedule = `${schedFmtTime(p.baseStart)} - ${schedFmtTime(p.baseEnd + (p.flexHours || 0))} CT`;
+      const maxLabel = p.maxHrs ? `${p.maxHrs}h/wk max` : 'Salaried';
+      const bgColors = { teal: '', blue: 'background:#eff6ff', amber: 'background:#fffbeb' };
+      return `<tr style="${bgColors[p.color] || ''}">
+        <td class="font-bold">${p.name}</td>
+        <td>${schedule}</td>
+        <td style="font-size:12px;color:#6b7280">${maxLabel} &middot; Off: ${daysOff}</td>
+        <td class="text-right">${p.maxHrs || 40}</td>
+      </tr>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div class="section">
+        <h2>Team Configuration (Central Time)</h2>
+        <table>
+          <thead><tr><th>Name</th><th>Available Window (CT)</th><th>Constraints</th><th class="text-right">Max Hrs/Wk</th></tr></thead>
+          <tbody>${staffRows}</tbody>
+        </table>
+        <div class="note">Brionna & Bella rotate weekend coverage. Zoie is always off Sat/Sun. Schedule tab generates optimal shifts from ticket demand.</div>
       </div>
       <div class="section">
         <h2>Assignee Volume</h2>
@@ -1030,6 +1099,89 @@ function renderContent() {
       },
       options: { indexAxis:'y', responsive:true, plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true}} }
     });
+  }
+}
+
+// ---- KPI DRILL-DOWN ----
+function drillKPI(metric) {
+  const container = document.getElementById('drill-panel-container');
+  if (!container || !DATA) return;
+
+  // Toggle off if already showing this metric
+  if (container.getAttribute('data-metric') === metric) {
+    container.innerHTML = '';
+    container.removeAttribute('data-metric');
+    return;
+  }
+  container.setAttribute('data-metric', metric);
+
+  if (metric === 'backlog') {
+    const tickets = DATA.openTickets || [];
+    container.innerHTML = `<div class="drill-panel">
+      <h3>Open Backlog — ${tickets.length} tickets <span class="close-btn" onclick="document.getElementById('drill-panel-container').innerHTML=''">&times;</span></h3>
+      <table>
+        <thead><tr><th>Key</th><th>Summary</th><th>Status</th><th>Partner</th><th>Assignee</th><th>Priority</th><th class="text-right">Age</th></tr></thead>
+        <tbody>${tickets.slice(0, 100).map(t => `<tr>
+          <td class="mono"><a href="${t.jiraUrl}" target="_blank">${t.key}</a></td>
+          <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.summary || ''}</td>
+          <td>${t.status}</td>
+          <td>${t.partner || '—'}</td>
+          <td>${t.assignee || '—'}</td>
+          <td>${t.priority || '—'}</td>
+          <td class="text-right ${t.ageDays > 7 ? 'text-red' : ''}">${t.ageDays}d</td>
+        </tr>`).join('')}</tbody>
+      </table>
+      ${tickets.length > 100 ? `<div style="font-size:11px;color:var(--gray-500);margin-top:8px">Showing 100 of ${tickets.length} tickets</div>` : ''}
+    </div>`;
+  }
+
+  else if (metric === 'total') {
+    const sc = DATA.statusCounts || {};
+    const rows = Object.entries(sc).sort((a,b) => b[1] - a[1]);
+    container.innerHTML = `<div class="drill-panel">
+      <h3>Tickets by Status <span class="close-btn" onclick="document.getElementById('drill-panel-container').innerHTML=''">&times;</span></h3>
+      <table>
+        <thead><tr><th>Status</th><th class="text-right">Count</th><th class="text-right">% of Total</th></tr></thead>
+        <tbody>${rows.map(([status, count]) => `<tr>
+          <td class="font-bold">${status}</td>
+          <td class="text-right">${count.toLocaleString()}</td>
+          <td class="text-right">${(count / DATA.summary.totalTickets * 100).toFixed(1)}%</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+  }
+
+  else if (metric === 'reopened') {
+    const tickets = DATA.reopenedTickets || [];
+    container.innerHTML = `<div class="drill-panel">
+      <h3>Currently Reopened — ${tickets.length} tickets <span class="close-btn" onclick="document.getElementById('drill-panel-container').innerHTML=''">&times;</span></h3>
+      <table>
+        <thead><tr><th>Key</th><th>Partner</th><th>Assignee</th><th class="text-right">Age (days)</th></tr></thead>
+        <tbody>${tickets.map(t => `<tr>
+          <td class="mono"><a href="https://steadymd.atlassian.net/browse/${t.key}" target="_blank">${t.key}</a></td>
+          <td>${t.partner || '—'}</td>
+          <td>${t.assignee || '—'}</td>
+          <td class="text-right ${t.ageDays > 5 ? 'text-red' : ''}">${t.ageDays}d</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+  }
+
+  else if (metric === 'resolved') {
+    const pv = DATA.partnerVolume || [];
+    container.innerHTML = `<div class="drill-panel">
+      <h3>Resolution Breakdown <span class="close-btn" onclick="document.getElementById('drill-panel-container').innerHTML=''">&times;</span></h3>
+      <div class="kpi-grid" style="margin-bottom:16px">
+        <div class="kpi"><div class="label">Total Resolved</div><div class="value green">${DATA.summary.resolvedCount.toLocaleString()}</div></div>
+        <div class="kpi"><div class="label">Resolution Rate</div><div class="value">${(DATA.summary.resolvedCount/DATA.summary.totalTickets*100).toFixed(1)}%</div></div>
+        <div class="kpi"><div class="label">Median CT</div><div class="value">${DATA.summary.medianCycleHrs}h</div></div>
+      </div>
+      <h3 style="font-size:13px;margin-bottom:8px">Top Partners by Volume</h3>
+      <table>
+        <thead><tr><th>Partner</th><th class="text-right">Tickets</th></tr></thead>
+        <tbody>${pv.map(p => `<tr><td class="font-bold">${p.partner || '(no component)'}</td><td class="text-right">${p.tickets.toLocaleString()}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>`;
   }
 }
 
@@ -1058,37 +1210,7 @@ function renderHeatmap() {
   return html;
 }
 
-function renderCoverageMap() {
-  const hours = [7,8,9,10,11,12,13,14,15,16,17,18,19,20];
-  const hlabel = h => `${h%12||12} ${h<12?'AM':'PM'}`;
-  const zoie =    [0,0,1,1,1,1,1,1,1,1,0,0,0,0];
-  const wc =      [0,0,0,0,0,1,1,1,1,1,1,1,1,0];
-  const pt =      [0,0,0,0,0,0,0,0,0,1,1,1,1,0];
-  const totals =  zoie.map((v,i)=>v+wc[i]+pt[i]);
-  const colors = ['#0f766e','#1d4ed8','#d97706'];
-  const people = [{name:'Zoie',hrs:zoie},{name:'Brionna',hrs:wc},{name:'Bella',hrs:pt}];
-
-  let html = '<table class="coverage-table"><thead><tr><th></th>';
-  hours.forEach(h => html += `<th>${hlabel(h)}</th>`);
-  html += '</tr></thead><tbody>';
-
-  people.forEach((p,pi) => {
-    html += `<tr><td class="role-label">${p.name}</td>`;
-    p.hrs.forEach(on => {
-      html += `<td style="background:${on?colors[pi]:'#f3f4f6'};color:${on?'#fff':'#d1d5db'};font-weight:600">${on?'ON':''}</td>`;
-    });
-    html += '</tr>';
-  });
-
-  html += '<tr style="border-top:2px solid #9ca3af"><td class="role-label" style="font-weight:700">Staff On</td>';
-  totals.forEach(n => {
-    const bg = n===0?'#fef2f2':n===1?'#fef9c3':n===2?'#ecfdf5':'#d1fae5';
-    const fg = n===0?'#dc2626':n===1?'#ca8a04':'#059669';
-    html += `<td style="background:${bg};color:${fg};font-weight:700">${n}</td>`;
-  });
-  html += '</tr></tbody></table>';
-  return html;
-}
+// renderCoverageMap removed — coverage depth is now shown dynamically in the Schedule tab
 
 // ============================================================
 // SCHEDULE TAB — Auto-generated staff rotation
@@ -1158,13 +1280,14 @@ function generateSchedule(demandModel, staff, numWeeks) {
   const days = getSchedDays();
   const weeks = [];
 
-  // Day-off rotation patterns for Brionna and Bella
-  // Each week they get 2 days off, rotating to cover different weekend/weekday combos
+  // Day-off rotation: Brionna & Bella MUST cover Sat & Sun between them
+  // Zoie is always off Sat/Sun. Each person gets 2 days off/week (Mon-Sun).
+  // At least one of Brionna/Bella works each weekend day.
   const offPatterns = [
-    { brionna: ['Tue','Thu'], bella: ['Sat','Sun'] },
-    { brionna: ['Sat','Sun'], bella: ['Thu','Mon'] },
-    { brionna: ['Tue','Thu'], bella: ['Sat','Sun'] },
-    { brionna: ['Sun','Tue'], bella: ['Sat','Thu'] },
+    { brionna: ['Tue','Thu'], bella: ['Wed','Sun'] },   // Bri covers Sat+Sun, Bella covers Sat
+    { brionna: ['Wed','Sat'], bella: ['Tue','Thu'] },    // Bella covers Sat+Sun, Bri covers Sun
+    { brionna: ['Mon','Thu'], bella: ['Wed','Sat'] },    // Bri covers Sat+Sun, Bella covers Sun
+    { brionna: ['Tue','Sun'], bella: ['Wed','Fri'] },    // Bella covers Sat+Sun, Bri covers Sat
   ];
 
   for (let wi = 0; wi < numWeeks; wi++) {
@@ -1184,68 +1307,92 @@ function generateSchedule(demandModel, staff, numWeeks) {
       });
 
       // Two-pass assignment: first spread coverage, then optimize
-      // Pass 1: Assign Zoie (constrained flex)
+      // Pass 1: Assign Zoie (salaried, flex start 8-9 AM, max 9hrs/day)
       const zoie = working.find(p => p.flexHours !== null);
       if (zoie) {
-        // Zoie starts as early as possible to cover morning
+        const maxDaily = zoie.maxDailyHrs || 9;
         let bestStart, bestEnd, bestScore = -1;
-        for (let offset = -zoie.flexHours; offset <= zoie.flexHours; offset += 0.5) {
-          const s = zoie.baseStart + offset;
-          const e = zoie.baseEnd + offset;
-          let score = 0;
-          for (let h = Math.floor(s); h < e; h++) score += demandModel[day][h] || 0;
-          // Strong bonus for covering early morning (8-10a) when no one else is on
-          for (let h = SCHED_COVERAGE.start; h < SCHED_COVERAGE.start + 2; h++) {
-            if (s <= h && e > h) score += 10;
+        // Try start times from 8 to 9 in 30-min steps
+        for (let s = zoie.baseStart; s <= zoie.baseStart + zoie.flexHours; s += 0.5) {
+          // Try shift lengths from 8 to maxDaily hours
+          for (let len = 8; len <= maxDaily; len += 0.5) {
+            const e = s + len;
+            if (e > 18) continue; // Don't go past 6 PM
+            let score = 0;
+            for (let h = Math.floor(s); h < e; h++) score += demandModel[day][h] || 0;
+            // Strong bonus for covering 8 AM start (coverage window opens)
+            if (s <= 8) score += 20;
+            if (score > bestScore) { bestScore = score; bestStart = s; bestEnd = e; }
           }
-          if (score > bestScore) { bestScore = score; bestStart = s; bestEnd = e; }
         }
         if (bestStart !== undefined) {
           weekShifts[day].push({ name: zoie.name, start: bestStart, end: bestEnd, color: zoie.color });
         }
       }
 
-      // Pass 2: Assign flexible staff to maximize spread and fill gaps
+      // Pass 2: Assign flexible staff to maximize spread and fill coverage gaps
       const flexible = working.filter(p => p.flexHours === null);
-      // Sort so the person with longer shifts goes first (Brionna 8.5h before Bella 7h)
+      // Sort so longer shift person goes first
       flexible.sort((a, b) => {
-        const aLen = a.name === 'Bella' ? 7 : 8.5;
-        const bLen = b.name === 'Bella' ? 7 : 8.5;
+        const aLen = a.maxHrs ? Math.min(8.5, a.maxHrs / 5) : 8.5;
+        const bLen = b.maxHrs ? Math.min(8.5, b.maxHrs / 5) : 8.5;
         return bLen - aLen;
       });
 
-      flexible.forEach((person, idx) => {
-        const shiftLen = person.name === 'Bella' ? 7 : 8.5;
-        const earliest = 7;
-        const latest = 21 - shiftLen;
-        let bestStart, bestEnd, bestScore = -1;
+      flexible.forEach((person) => {
+        const maxDaily = person.maxHrs ? Math.min(9, person.maxHrs / 5) : 8.5;
+        const shiftLen = isWeekend ? Math.min(maxDaily, 8) : maxDaily;
 
-        for (let s = earliest; s <= latest; s += 0.5) {
-          const e = s + shiftLen;
-          let score = 0;
-          // Demand score
-          for (let h = Math.floor(s); h < e; h++) score += demandModel[day][h] || 0;
-          // Coverage window bonus
-          for (let h = SCHED_COVERAGE.start; h < SCHED_COVERAGE.end; h++) {
-            if (s <= h && e > h) score += 3;
-          }
-          // Gap-filling bonus: huge bonus for covering hours not yet covered
-          const existingShifts = weekShifts[day];
-          for (let h = SCHED_COVERAGE.start; h < SCHED_COVERAGE.end; h++) {
-            const alreadyCovered = existingShifts.some(sh => sh.start <= h && sh.end > h);
-            if (!alreadyCovered && s <= h && e > h) score += 15; // strong gap-fill incentive
-          }
-          // Late coverage bonus for last flexible person — push toward evening
-          if (idx === flexible.length - 1) {
-            for (let h = 17; h < SCHED_COVERAGE.end; h++) {
-              if (s <= h && e > h) score += 5;
+        if (isWeekend) {
+          // WEEKEND: Only staff dense hours + 1hr buffer before/after
+          // Find the densest contiguous block
+          let peakStart = 12, peakEnd = 16; // fallback
+          let bestBlock = -1;
+          for (let start = SCHED_COVERAGE.start; start <= SCHED_COVERAGE.end - 2; start++) {
+            let blockDemand = 0;
+            for (let h = start; h < Math.min(start + shiftLen, SCHED_COVERAGE.end); h++) {
+              blockDemand += demandModel[day][h] || 0;
+            }
+            if (blockDemand > bestBlock) {
+              bestBlock = blockDemand;
+              peakStart = start;
+              peakEnd = Math.min(start + shiftLen, SCHED_COVERAGE.end);
             }
           }
-          if (score > bestScore) { bestScore = score; bestStart = s; bestEnd = e; }
-        }
+          // Add 1hr buffer before and after the dense block
+          const bufferedStart = Math.max(SCHED_RANGE.start, peakStart - 1);
+          const bufferedEnd = Math.min(SCHED_RANGE.end, peakEnd + 1);
+          const actualLen = Math.min(shiftLen, bufferedEnd - bufferedStart);
+          const finalStart = bufferedStart;
+          const finalEnd = finalStart + actualLen;
+          weekShifts[day].push({ name: person.name, start: finalStart, end: finalEnd, color: person.color });
+        } else {
+          // WEEKDAY: Fill 8a-8p coverage gaps — no late-shift preference
+          const earliest = SCHED_COVERAGE.start;
+          const latest = SCHED_COVERAGE.end - shiftLen;
+          let bestStart, bestEnd, bestScore = -1;
 
-        if (bestStart !== undefined) {
-          weekShifts[day].push({ name: person.name, start: bestStart, end: bestEnd, color: person.color });
+          for (let s = earliest; s <= latest; s += 0.5) {
+            const e = s + shiftLen;
+            let score = 0;
+            // Demand score
+            for (let h = Math.floor(s); h < e; h++) score += demandModel[day][h] || 0;
+            // Coverage window bonus
+            for (let h = SCHED_COVERAGE.start; h < SCHED_COVERAGE.end; h++) {
+              if (s <= h && e > h) score += 3;
+            }
+            // Gap-filling bonus: HUGE bonus for covering hours not yet staffed
+            const existingShifts = weekShifts[day];
+            for (let h = SCHED_COVERAGE.start; h < SCHED_COVERAGE.end; h++) {
+              const alreadyCovered = existingShifts.some(sh => sh.start <= h && sh.end > h);
+              if (!alreadyCovered && s <= h && e > h) score += 25; // strong gap-fill
+            }
+            if (score > bestScore) { bestScore = score; bestStart = s; bestEnd = e; }
+          }
+
+          if (bestStart !== undefined) {
+            weekShifts[day].push({ name: person.name, start: bestStart, end: bestEnd, color: person.color });
+          }
         }
       });
 
@@ -1264,32 +1411,33 @@ function generateSchedule(demandModel, staff, numWeeks) {
       hours[p.name] = Math.round(total * 10) / 10;
     });
 
-    // Enforce hour caps — trim shifts if over
-    if (hours['Bella'] > 35) {
-      // Find the lowest-demand day for Bella and shorten or remove
-      let lowestDay = null, lowestScore = Infinity;
-      days.forEach(d => {
-        const shift = weekShifts[d].find(s => s.name === 'Bella');
-        if (shift) {
-          let score = 0;
-          for (let h = Math.floor(shift.start); h < shift.end; h++) score += demandModel[d][h] || 0;
-          if (score < lowestScore) { lowestScore = score; lowestDay = d; }
-        }
-      });
-      if (lowestDay) {
-        const shift = weekShifts[lowestDay].find(s => s.name === 'Bella');
-        const excess = hours['Bella'] - 35;
+    // Enforce hour caps for all capped staff
+    staff.filter(p => p.maxHrs).forEach(p => {
+      while (hours[p.name] > p.maxHrs) {
+        // Find lowest-demand day and trim/remove that shift
+        let lowestDay = null, lowestScore = Infinity;
+        days.forEach(d => {
+          const shift = weekShifts[d].find(s => s.name === p.name);
+          if (shift) {
+            let score = 0;
+            for (let h = Math.floor(shift.start); h < shift.end; h++) score += demandModel[d][h] || 0;
+            if (score < lowestScore) { lowestScore = score; lowestDay = d; }
+          }
+        });
+        if (!lowestDay) break;
+        const shift = weekShifts[lowestDay].find(s => s.name === p.name);
+        const excess = hours[p.name] - p.maxHrs;
         if (excess >= shift.end - shift.start) {
-          weekShifts[lowestDay] = weekShifts[lowestDay].filter(s => s.name !== 'Bella');
+          weekShifts[lowestDay] = weekShifts[lowestDay].filter(s => s.name !== p.name);
         } else {
-          shift.end -= excess;
+          shift.end -= Math.ceil(excess * 2) / 2; // round to 30-min
         }
         // Recalculate
         let total = 0;
-        days.forEach(d => { const s = weekShifts[d].find(s => s.name === 'Bella'); if (s) total += s.end - s.start; });
-        hours['Bella'] = Math.round(total * 10) / 10;
+        days.forEach(d => { const s = weekShifts[d].find(s => s.name === p.name); if (s) total += s.end - s.start; });
+        hours[p.name] = Math.round(total * 10) / 10;
       }
-    }
+    });
 
     // Determine days off per person
     const daysOff = {};
@@ -1323,12 +1471,21 @@ function analyzeGaps(weekSchedule, demandModel, capacity) {
       const demand = demandModel[day][h] || 0;
       const cap = staffOn * capacity;
 
-      if (staffOn === 0 && !isWeekend) {
-        alerts.push({ severity: 'red', day, hour: h, staffOn, demand,
-          msg: `${day} ${schedFmtShort(h)}-${schedFmtShort(h+1)}: No coverage (avg ${demand} tickets/hr)` });
-      } else if (demand > cap * 1.2 && staffOn > 0 && !isWeekend) {
-        alerts.push({ severity: 'amber', day, hour: h, staffOn, demand,
-          msg: `${day} ${schedFmtShort(h)}-${schedFmtShort(h+1)}: ${staffOn} staff for avg ${demand} tickets/hr — may need support` });
+      if (isWeekend) {
+        // Weekends: only flag if there's significant demand but no one on
+        if (staffOn === 0 && demand > 5) {
+          alerts.push({ severity: 'amber', day, hour: h, staffOn, demand,
+            msg: `${day} ${schedFmtShort(h)}-${schedFmtShort(h+1)}: No coverage (avg ${demand} tickets/hr)` });
+        }
+      } else {
+        // M-F: 8a-8p MUST be fully covered — no exceptions
+        if (staffOn === 0) {
+          alerts.push({ severity: 'red', day, hour: h, staffOn, demand,
+            msg: `${day} ${schedFmtShort(h)}-${schedFmtShort(h+1)}: No coverage (avg ${demand} tickets/hr)` });
+        } else if (demand > cap * 1.2 && staffOn > 0) {
+          alerts.push({ severity: 'amber', day, hour: h, staffOn, demand,
+            msg: `${day} ${schedFmtShort(h)}-${schedFmtShort(h+1)}: ${staffOn} staff for avg ${demand} tickets/hr — may need support` });
+        }
       }
     }
   });
@@ -1417,20 +1574,7 @@ function renderScheduleTab(el) {
       </div>
     </div>
 
-    ${alerts.filter(a=>a.severity==='red').length > 0 ? `
-    <div class="info-box info-red" style="margin-bottom:16px">
-      <strong>Coverage Gaps</strong>
-      ${alerts.filter(a=>a.severity==='red').map(a=>`<p style="margin:4px 0;font-size:12px">${a.msg}</p>`).join('')}
-    </div>` : ''}
-
-    ${alerts.filter(a=>a.severity==='amber').length > 0 ? `
-    <div class="info-box info-amber" style="margin-bottom:16px">
-      <strong>Potential Understaffing</strong>
-      ${alerts.filter(a=>a.severity==='amber').slice(0,5).map(a=>`<p style="margin:4px 0;font-size:12px">${a.msg}</p>`).join('')}
-      ${alerts.filter(a=>a.severity==='amber').length > 5 ? `<p style="font-size:11px;color:var(--gray-500)">+ ${alerts.filter(a=>a.severity==='amber').length - 5} more</p>` : ''}
-    </div>` : ''}
-
-    ${alerts.length === 0 ? `<div class="info-box info-green" style="margin-bottom:16px"><strong>Full coverage</strong> — No gaps detected for Week ${week.label} during 8 AM - 8 PM M-F.</div>` : ''}
+    ${renderAlertCards(alerts, week.label)}
 
     <div class="section">
       <h2>Week ${week.label} — Shift Timeline</h2>
@@ -1451,6 +1595,78 @@ function renderScheduleTab(el) {
       </div>
     </div>
   `;
+}
+
+function renderAlertCards(alerts, weekLabel) {
+  const redAlerts = alerts.filter(a => a.severity === 'red');
+  const amberAlerts = alerts.filter(a => a.severity === 'amber');
+
+  if (alerts.length === 0) {
+    return `<div class="alert-card green"><div class="alert-card-header">
+      <span>&#10003; Full coverage — No gaps for Week ${weekLabel} (8 AM - 8 PM M-F)</span>
+    </div></div>`;
+  }
+
+  let html = '';
+
+  if (redAlerts.length > 0) {
+    // Group by day for readability
+    const byDay = {};
+    redAlerts.forEach(a => { if (!byDay[a.day]) byDay[a.day] = []; byDay[a.day].push(a); });
+
+    html += `<div class="alert-card red">
+      <div class="alert-card-header" onclick="this.parentElement.querySelector('.alert-card-body').classList.toggle('hidden')">
+        <span>&#9888; Coverage Gaps <span class="alert-badge red">${redAlerts.length} hours uncovered</span></span>
+        <span style="font-size:18px">&#9662;</span>
+      </div>
+      <div class="alert-card-body">
+        <table>
+          <thead><tr><th>Day</th><th>Uncovered Hours</th><th class="text-right">Avg Tickets/Hr</th><th>Action</th></tr></thead>
+          <tbody>${Object.entries(byDay).map(([day, items]) => {
+            const hourRange = items.map(a => schedFmtShort(a.hour)).join(', ');
+            const totalDemand = items.reduce((s, a) => s + a.demand, 0);
+            const avgDemand = Math.round(totalDemand / items.length);
+            return `<tr>
+              <td class="font-bold">${day}</td>
+              <td>${hourRange}</td>
+              <td class="text-right text-red">${avgDemand}</td>
+              <td><span style="font-size:11px;color:var(--teal);cursor:pointer" onclick="switchTab('schedule')">Edit shift &rarr;</span></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  if (amberAlerts.length > 0) {
+    const byDay = {};
+    amberAlerts.forEach(a => { if (!byDay[a.day]) byDay[a.day] = []; byDay[a.day].push(a); });
+
+    html += `<div class="alert-card amber">
+      <div class="alert-card-header" onclick="this.parentElement.querySelector('.alert-card-body').classList.toggle('hidden')">
+        <span>&#9888; Potential Understaffing <span class="alert-badge amber">${amberAlerts.length} hours at risk</span></span>
+        <span style="font-size:18px">&#9662;</span>
+      </div>
+      <div class="alert-card-body hidden">
+        <table>
+          <thead><tr><th>Day</th><th>Hours</th><th class="text-right">Staff</th><th class="text-right">Avg Demand</th></tr></thead>
+          <tbody>${Object.entries(byDay).map(([day, items]) => {
+            const hourRange = items.map(a => schedFmtShort(a.hour)).join(', ');
+            const staffOn = items[0].staffOn;
+            const avgDemand = Math.round(items.reduce((s, a) => s + a.demand, 0) / items.length);
+            return `<tr>
+              <td class="font-bold">${day}</td>
+              <td>${hourRange}</td>
+              <td class="text-right">${staffOn}</td>
+              <td class="text-right text-amber">${avgDemand}/hr</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  return html;
 }
 
 function renderScheduleTimeline(week, demandModel) {
