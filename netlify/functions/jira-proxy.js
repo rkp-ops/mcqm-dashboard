@@ -1,4 +1,7 @@
 const fetch = require('node-fetch');
+const zlib = require('zlib');
+const { promisify } = require('util');
+const gzip = promisify(zlib.gzip);
 
 // ── Env ──────────────────────────────────────────────────────
 const JIRA_DOMAIN = process.env.JIRA_DOMAIN || 'steadymd.atlassian.net';
@@ -343,11 +346,23 @@ exports.handler = async (event) => {
     }
 
     const result = computeMetrics(filteredTickets, filterFrom, filterTo);
+    const jsonBody = JSON.stringify(result);
+
+    // Compress if response is large (Netlify 6MB limit)
+    if (jsonBody.length > 1_000_000) {
+      const compressed = await gzip(Buffer.from(jsonBody));
+      return {
+        statusCode: 200,
+        headers: { ...CORS, 'Content-Encoding': 'gzip' },
+        body: compressed.toString('base64'),
+        isBase64Encoded: true,
+      };
+    }
 
     return {
       statusCode: 200,
       headers: CORS,
-      body: JSON.stringify(result),
+      body: jsonBody,
     };
   } catch (err) {
     console.error('Jira proxy error:', err);
