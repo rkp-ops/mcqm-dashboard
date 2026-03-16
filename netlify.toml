@@ -5,6 +5,10 @@
 [functions]
   node_bundler = "esbuild"
 
+[functions."jira-proxy"]
+  external_node_modules = ["node-fetch"]
+  timeout = 26
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
