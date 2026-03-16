@@ -60,21 +60,9 @@ function transformIssue(issue) {
     isInternal: c.jsdPublic === false || (c.visibility && c.visibility.type === 'role'),
   }));
 
-  // Changelog: reopens
-  const changelog = (issue.changelog?.histories || []);
-  let reopenCount = 0;
-  const FINAL_STATUSES = ['done', 'closed', 'resolved', 'cancelled', 'declined', "won't do", 'wont do'];
-  for (const history of changelog) {
-    for (const item of history.items || []) {
-      if (item.field === 'status') {
-        const fromLower = (item.fromString || '').toLowerCase();
-        const toLower = (item.toString || '').toLowerCase();
-        if (FINAL_STATUSES.includes(fromLower) && !FINAL_STATUSES.includes(toLower)) {
-          reopenCount++;
-        }
-      }
-    }
-  }
+  // Reopen detection from current status (changelog removed for performance)
+  const statusName = (f.status?.name || '').toLowerCase();
+  const reopenCount = statusName === 'reopened' ? 1 : 0;
 
   // External comments for recontact tracking
   const extComments = comments.filter(c => !c.isInternal).map(c => ({ dt: c.created }));
@@ -334,7 +322,7 @@ exports.handler = async (event) => {
       'issuetype','labels','components','comment','resolution','resolutiondate',
     ];
 
-    const allIssues = await jiraSearchAll({ jql, fields, expand: 'changelog' });
+    const allIssues = await jiraSearchAll({ jql, fields });
     const tickets = allIssues.map(issue => transformIssue(issue));
 
     // Filter by projects if specified
