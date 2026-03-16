@@ -1,13 +1,9 @@
-const fetch = require('node-fetch');
-const { getStore } = require('@netlify/blobs');
-const zlib = require('zlib');
-const { promisify } = require('util');
-const gzip = promisify(zlib.gzip);
+import { getStore } from '@netlify/blobs';
 
-const JIRA_DOMAIN = process.env.JIRA_DOMAIN || 'steadymd.atlassian.net';
-const JIRA_EMAIL  = process.env.JIRA_EMAIL;
-const JIRA_TOKEN  = process.env.JIRA_TOKEN;
-const AUTH_HEADER  = 'Basic ' + Buffer.from(`${JIRA_EMAIL}:${JIRA_TOKEN}`).toString('base64');
+const JIRA_DOMAIN = Netlify.env.get('JIRA_DOMAIN') || 'steadymd.atlassian.net';
+const JIRA_EMAIL  = Netlify.env.get('JIRA_EMAIL');
+const JIRA_TOKEN  = Netlify.env.get('JIRA_TOKEN');
+const AUTH_HEADER  = 'Basic ' + btoa(`${JIRA_EMAIL}:${JIRA_TOKEN}`);
 const BASE_URL     = `https://${JIRA_DOMAIN}/rest/api/3`;
 
 async function jiraSearch({ jql, fields, maxResults = 100, expand, nextPageToken }) {
@@ -253,7 +249,7 @@ function ptl(a,p) { if(!a.length) return 0; const s=[...a].sort((x,y)=>x-y); con
 function r1(n) { return Math.round(n*10)/10; }
 
 // ── Background handler (runs up to 15 min) ───────────────────
-exports.handler = async (event) => {
+export default async (req, context) => {
   if (!JIRA_EMAIL || !JIRA_TOKEN) {
     console.error('Missing JIRA credentials');
     return;
