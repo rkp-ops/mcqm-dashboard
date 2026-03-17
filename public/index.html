@@ -277,11 +277,11 @@ const STAFF = [
     baseStart: 8, baseEnd: 17, flexHours: 1,
     fixedDaysOff: ['Sat','Sun'], minDaysOff: 2, maxHrs: null, maxDailyHrs: 9, salaried: true },
   { name: 'Brionna', color: 'blue', tz: 'Central',
-    baseStart: 8, baseEnd: 16.5, flexHours: null,
-    fixedDaysOff: [], minDaysOff: 2, maxHrs: 45, salaried: false },
+    baseStart: 8, baseEnd: 17, flexHours: null,
+    fixedDaysOff: [], minDaysOff: 2, maxHrs: 45, maxDailyHrs: 9, salaried: false },
   { name: 'Bella', color: 'amber', tz: 'Central',
     baseStart: 8, baseEnd: 16, flexHours: null,
-    fixedDaysOff: [], minDaysOff: 2, maxHrs: 35, salaried: false },
+    fixedDaysOff: [], minDaysOff: 2, maxHrs: 35, maxDailyHrs: 8, salaried: false },
 ];
 
 let currentScheduleWeek = 0;
@@ -1083,7 +1083,7 @@ function renderContent() {
           <thead><tr><th>Name</th><th>Available Window (CT)</th><th>Constraints</th><th class="text-right">Max Hrs/Wk</th></tr></thead>
           <tbody>${staffRows}</tbody>
         </table>
-        <div class="note">Brionna & Bella rotate weekend coverage. Zoie is always off Sat/Sun. Schedule tab generates optimal shifts from ticket demand.</div>
+        <div class="note">Brionna & Bella rotate weekend coverage (Sat/Sun). Zoie is always off Sat/Sun. Brionna: up to 45h/wk, 2 days off, flexible scheduling. Bella: max 35h/wk, 2 days off. Schedule generates from ticket demand patterns.</div>
       </div>
       <div class="section">
         <h2>Assignee Volume</h2>
@@ -1330,23 +1330,22 @@ function generateSchedule(demandModel, staff, numWeeks) {
         }
       }
 
-      // Pass 2: Assign flexible staff to maximize spread and fill coverage gaps
+      // Pass 2: Assign flexible staff — GUARANTEE 8a-8p coverage M-F
       const flexible = working.filter(p => p.flexHours === null);
-      // Sort so longer shift person goes first
+      // Sort so longer shift (higher maxHrs) person goes first to maximize coverage
       flexible.sort((a, b) => {
-        const aLen = a.maxHrs ? Math.min(8.5, a.maxHrs / 5) : 8.5;
-        const bLen = b.maxHrs ? Math.min(8.5, b.maxHrs / 5) : 8.5;
-        return bLen - aLen;
+        const aMax = a.maxDailyHrs || (a.maxHrs ? Math.min(9, a.maxHrs / 5) : 8.5);
+        const bMax = b.maxDailyHrs || (b.maxHrs ? Math.min(9, b.maxHrs / 5) : 8.5);
+        return bMax - aMax;
       });
 
       flexible.forEach((person) => {
-        const maxDaily = person.maxHrs ? Math.min(9, person.maxHrs / 5) : 8.5;
+        const maxDaily = person.maxDailyHrs || (person.maxHrs ? Math.min(9, person.maxHrs / 5) : 8.5);
         const shiftLen = isWeekend ? Math.min(maxDaily, 8) : maxDaily;
 
         if (isWeekend) {
           // WEEKEND: Only staff dense hours + 1hr buffer before/after
-          // Find the densest contiguous block
-          let peakStart = 12, peakEnd = 16; // fallback
+          let peakStart = 12, peakEnd = 16;
           let bestBlock = -1;
           for (let start = SCHED_COVERAGE.start; start <= SCHED_COVERAGE.end - 2; start++) {
             let blockDemand = 0;
@@ -1359,39 +1358,63 @@ function generateSchedule(demandModel, staff, numWeeks) {
               peakEnd = Math.min(start + shiftLen, SCHED_COVERAGE.end);
             }
           }
-          // Add 1hr buffer before and after the dense block
           const bufferedStart = Math.max(SCHED_RANGE.start, peakStart - 1);
           const bufferedEnd = Math.min(SCHED_RANGE.end, peakEnd + 1);
           const actualLen = Math.min(shiftLen, bufferedEnd - bufferedStart);
-          const finalStart = bufferedStart;
-          const finalEnd = finalStart + actualLen;
-          weekShifts[day].push({ name: person.name, start: finalStart, end: finalEnd, color: person.color });
+          weekShifts[day].push({ name: person.name, start: bufferedStart, end: bufferedStart + actualLen, color: person.color });
         } else {
-          // WEEKDAY: Fill 8a-8p coverage gaps — no late-shift preference
-          const earliest = SCHED_COVERAGE.start;
-          const latest = SCHED_COVERAGE.end - shiftLen;
-          let bestStart, bestEnd, bestScore = -1;
-
-          for (let s = earliest; s <= latest; s += 0.5) {
-            const e = s + shiftLen;
-            let score = 0;
-            // Demand score
-            for (let h = Math.floor(s); h < e; h++) score += demandModel[day][h] || 0;
-            // Coverage window bonus
-            for (let h = SCHED_COVERAGE.start; h < SCHED_COVERAGE.end; h++) {
-              if (s <= h && e > h) score += 3;
-            }
-            // Gap-filling bonus: HUGE bonus for covering hours not yet staffed
-            const existingShifts = weekShifts[day];
-            for (let h = SCHED_COVERAGE.start; h < SCHED_COVERAGE.end; h++) {
-              const alreadyCovered = existingShifts.some(sh => sh.start <= h && sh.end > h);
-              if (!alreadyCovered && s <= h && e > h) score += 25; // strong gap-fill
-            }
-            if (score > bestScore) { bestScore = score; bestStart = s; bestEnd = e; }
+          // WEEKDAY: MUST FILL 8a-8p GAPS. No exceptions.
+          // Find uncovered hours in the 8a-8p window
+          const existingShifts = weekShifts[day];
+          const uncovered = [];
+          for (let h = SCHED_COVERAGE.start; h < SCHED_COVERAGE.end; h++) {
+            if (!existingShifts.some(sh => sh.start <= h && sh.end > h)) uncovered.push(h);
           }
 
-          if (bestStart !== undefined) {
+          if (uncovered.length > 0) {
+            // Place shift to cover as many uncovered hours as possible
+            // The latest uncovered hour determines the shift end
+            const latestUncovered = Math.max(...uncovered);
+            const earliestUncovered = Math.min(...uncovered);
+
+            // Prefer a shift that covers the LATE gap (closer to 8 PM) since Zoie covers morning
+            const idealEnd = Math.min(SCHED_COVERAGE.end, latestUncovered + 1);
+            const idealStart = Math.max(SCHED_COVERAGE.start, idealEnd - shiftLen);
+
+            // But if the early gap is also uncovered and person can start there, do it
+            let bestStart = idealStart, bestEnd = idealEnd;
+
+            // If there's a gap at both ends, optimize placement
+            if (earliestUncovered < idealStart) {
+              // Try starting earlier to catch more uncovered hours
+              const altStart = Math.max(SCHED_COVERAGE.start, earliestUncovered);
+              const altEnd = altStart + shiftLen;
+              // Count coverage for both options
+              const idealCoverage = uncovered.filter(h => h >= idealStart && h < idealEnd).length;
+              const altCoverage = uncovered.filter(h => h >= altStart && h < altEnd).length;
+              if (altCoverage > idealCoverage) {
+                bestStart = altStart;
+                bestEnd = altEnd;
+              }
+            }
+
+            // Clamp to valid range
+            bestEnd = Math.min(bestEnd, SCHED_COVERAGE.end);
+            bestStart = Math.max(bestStart, SCHED_COVERAGE.start);
+            if (bestEnd - bestStart > shiftLen) bestStart = bestEnd - shiftLen;
+            if (bestEnd - bestStart < shiftLen) bestEnd = Math.min(bestStart + shiftLen, SCHED_COVERAGE.end);
+
             weekShifts[day].push({ name: person.name, start: bestStart, end: bestEnd, color: person.color });
+          } else {
+            // All hours covered — place based on demand optimization
+            let bestStart = SCHED_COVERAGE.start, bestScore = -1;
+            for (let s = SCHED_COVERAGE.start; s <= SCHED_COVERAGE.end - shiftLen; s += 0.5) {
+              const e = s + shiftLen;
+              let score = 0;
+              for (let h = Math.floor(s); h < e; h++) score += demandModel[day][h] || 0;
+              if (score > bestScore) { bestScore = score; bestStart = s; }
+            }
+            weekShifts[day].push({ name: person.name, start: bestStart, end: bestStart + shiftLen, color: person.color });
           }
         }
       });
