@@ -49,15 +49,25 @@ function transformIssue(issue) {
 
   const INTERNAL_DOMAINS = ['steadymd.com'];
   const isExternalEmail = (email) => {
-    if (!email) return true; // no email = likely a portal customer
+    if (!email) return false; // no email = system/automation account, not a customer
     return !INTERNAL_DOMAINS.some(d => email.toLowerCase().endsWith('@' + d));
   };
+
+  // Sort all external (non-internal-note) comments chronologically
+  const extCommentsChron = comments
+    .filter(c => !c.isInternal)
+    .sort((a, b) => new Date(a.created) - new Date(b.created));
 
   const changelog = (issue.changelog?.histories || []);
   let reopenCount = 0;
   const reopenEvents = [];
+  const usedCommentDates = new Set(); // track which comments already matched a transition
   const FINAL_STATUSES = ['done', 'closed', 'resolved', 'cancelled', 'declined', "won't do", 'wont do'];
-  for (const history of changelog) {
+
+  // Sort changelog chronologically so we process transitions in order
+  const sortedHistories = [...changelog].sort((a, b) => new Date(a.created) - new Date(b.created));
+
+  for (const history of sortedHistories) {
     for (const item of history.items || []) {
       if (item.field === 'status') {
         const fromLower = (item.fromString || '').toLowerCase();
@@ -67,20 +77,30 @@ function transformIssue(issue) {
           const transitionAuthorEmail = history.author?.emailAddress || '';
           const transitionAuthorName = history.author?.displayName || 'System';
 
-          // Check if an external comment happened shortly before this transition (within 5 min)
-          // That means a non-SteadyMD person's comment triggered the reopen
-          const extCommentTrigger = comments.find(c => {
-            if (c.isInternal) return false;
-            if (!isExternalEmail(c.email)) return false;
+          // Find the most recent external comment BEFORE this transition (within 30 min)
+          // that hasn't already been matched to an earlier transition.
+          // In JSM, a customer reply on a resolved ticket triggers automation to reopen.
+          // The automation runs under a @steadymd.com service account, so we can't rely
+          // on the transition author — we must look at the comment that caused it.
+          let extCommentTrigger = null;
+          for (let ci = extCommentsChron.length - 1; ci >= 0; ci--) {
+            const c = extCommentsChron[ci];
+            if (usedCommentDates.has(c.created)) continue;
             const commentDate = new Date(c.created);
             const diffMin = (transitionDate - commentDate) / 60000;
-            return diffMin >= 0 && diffMin <= 5;
-          });
+            if (diffMin < 0) continue; // comment is after transition
+            if (diffMin > 30) break; // too old, stop searching
+            // Found an external comment within 30 min before the transition
+            extCommentTrigger = c;
+            usedCommentDates.add(c.created);
+            break;
+          }
 
-          // Determine if this is an external-triggered reopen:
-          // 1) An external comment happened just before the transition, OR
-          // 2) The transition author is not a SteadyMD domain user (e.g., automation on behalf of customer)
-          const isExternalTrigger = !!extCommentTrigger || isExternalEmail(transitionAuthorEmail);
+          // External trigger if:
+          // 1) An external comment preceded the transition (customer replied → automation reopened), OR
+          // 2) The transition author is genuinely external (non-steadymd email, not empty)
+          const authorIsExternal = transitionAuthorEmail && isExternalEmail(transitionAuthorEmail);
+          const isExternalTrigger = !!extCommentTrigger || authorIsExternal;
 
           reopenCount++;
           reopenEvents.push({
@@ -358,8 +378,17 @@ function computeMetrics(tickets) {
   const statusCounts = {};
   tickets.forEach(t => { statusCounts[t.status] = (statusCounts[t.status]||0)+1; });
 
-  // Open tickets for drill-down (backlog detail)
+  // Missing partner (component) tracking — data quality alert
   const openStatuses = ['Pending','Waiting for Customer','Reopened','In Progress','Waiting for support','Open','To Do'];
+  const noPartnerTickets = tickets.filter(t => !t.partner).map(t => ({
+    key: t.key, projectKey: t.projectKey, summary: t.summary, status: t.status,
+    labels: t.labels, assignee: t.assignee, priority: t.priority,
+    created: t.created, ageDays: t.created ? Math.round((now - new Date(t.created))/864e5) : 0,
+    jiraUrl: t.jiraUrl,
+  })).sort((a,b) => b.ageDays - a.ageDays);
+  const noPartnerOpen = noPartnerTickets.filter(t => openStatuses.includes(t.status));
+
+  // Open tickets for drill-down (backlog detail)
   const openTickets = tickets.filter(t => openStatuses.includes(t.status)).map(t => ({
     key: t.key, projectKey: t.projectKey, summary: t.summary, status: t.status,
     partner: t.partner, labels: t.labels, assignee: t.assignee, priority: t.priority,
@@ -380,10 +409,12 @@ function computeMetrics(tickets) {
       recontact24hPct: rc24Pct, recontact72hPct: rc72Pct,
       top1Name: sa[0]?sa[0][0]:'N/A', top1Pct, top2Pct, top3Pct,
       mtdTotal: mtdTickets.length, mtdByPK,
+      noPartnerTotal: noPartnerTickets.length, noPartnerOpenCount: noPartnerOpen.length,
     },
     monthlyVolume, monthlyByPK, dailyVolume, dowVolume, hourlyVolume, heatmap,
     partnerVolume, labelVolume, priorityVolume, assigneeStats, assigneeVolume, cycleTimeDist: ctDist,
     partnerCycleTime, partnerRecontact, reopenedTickets: reopenedTix, openTickets, statusCounts,
+    noPartnerOpen: noPartnerOpen.slice(0, 100),
     allReopenEvents: allReopenEvents.slice(0, 200), reopenTrend, topReopenedTickets,
     recontactEvents: recontactEvents.slice(0, 200), recontactTrend,
   };
@@ -419,6 +450,37 @@ export default async (req, context) => {
         return issues;
       })
     );
+
+    // Field discovery: fetch one ticket with ALL fields to find custom "Partner" dropdown
+    try {
+      const sampleRes = await fetch(`${BASE_URL}/search/jql`, {
+        method: 'POST',
+        headers: { Authorization: AUTH_HEADER, Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jql: 'project = MCQM ORDER BY created DESC', maxResults: 1 }),
+      });
+      if (sampleRes.ok) {
+        const sampleData = await sampleRes.json();
+        const sampleFields = sampleData.issues?.[0]?.fields || {};
+        // Log all custom fields that contain "partner" in their key or have a value that looks like a partner
+        const customFields = Object.entries(sampleFields).filter(([k]) => k.startsWith('customfield_'));
+        const partnerLike = customFields.filter(([k, v]) => {
+          if (!v) return false;
+          const vStr = JSON.stringify(v).toLowerCase();
+          return vStr.includes('partner') || (typeof v === 'object' && v.value);
+        });
+        console.log('FIELD DISCOVERY — custom fields with values:', customFields.filter(([k,v]) => v !== null).map(([k,v]) => `${k}=${JSON.stringify(v).slice(0,120)}`).join(' | '));
+        console.log('FIELD DISCOVERY — partner-like fields:', partnerLike.map(([k,v]) => `${k}=${JSON.stringify(v).slice(0,200)}`).join(' | '));
+      }
+      // Also fetch field definitions from Jira
+      const fieldDefRes = await fetch(`${BASE_URL}/field`, {
+        headers: { Authorization: AUTH_HEADER, Accept: 'application/json' },
+      });
+      if (fieldDefRes.ok) {
+        const fieldDefs = await fieldDefRes.json();
+        const partnerFields = fieldDefs.filter(f => f.name && f.name.toLowerCase().includes('partner'));
+        console.log('FIELD DEFS — partner fields:', partnerFields.map(f => `${f.id} (${f.name}, ${f.schema?.type || 'unknown'})`).join(' | '));
+      }
+    } catch (e) { console.log('Field discovery error:', e.message); }
 
     const results = await Promise.all(fetches);
     const allIssues = results.flat();

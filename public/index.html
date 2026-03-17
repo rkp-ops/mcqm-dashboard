@@ -867,6 +867,27 @@ function renderContent() {
           <div class="kpi clickable" onclick="switchTab('demand')"><div class="label">After-Hours</div><div class="value amber">${(100-s.bizHoursPct).toFixed(1)}%</div><div class="sub">Outside coverage window</div><div class="drill-hint">Click for hourly breakdown</div></div>
         </div>
       </div>
+      ${(s.noPartnerOpenCount > 0) ? `
+      <div class="alert-card red" style="margin-bottom:0">
+        <div class="alert-card-header" onclick="this.parentElement.querySelector('.alert-card-body').classList.toggle('hidden')">
+          <span>&#9888; Missing Partner (Component) <span class="alert-badge red">${s.noPartnerOpenCount} open tickets</span> <span style="font-size:11px;color:var(--gray-500)">(${s.noPartnerTotal || 0} total all-time)</span></span>
+          <span style="font-size:18px">&#9662;</span>
+        </div>
+        <div class="alert-card-body hidden">
+          <div style="font-size:12px;color:var(--gray-500);margin-bottom:8px">These open tickets have no Component set in Jira — partner attribution is broken for these. Click any ticket to fix in Jira.</div>
+          <table>
+            <thead><tr><th>Key</th><th>Summary</th><th>Status</th><th>Labels</th><th>Assignee</th><th class="text-right">Age</th></tr></thead>
+            <tbody>${(DATA.noPartnerOpen || []).slice(0, 50).map(t => `<tr>
+              <td class="mono"><a href="${t.jiraUrl}" target="_blank" style="color:#991b1b">${t.key}</a> <span style="font-size:10px;color:#991b1b" title="No component/partner set">&#9888;</span></td>
+              <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${t.summary || ''}</td>
+              <td style="font-size:12px">${t.status}</td>
+              <td style="font-size:11px">${(t.labels && t.labels.length > 0) ? t.labels.join(', ') : '—'}</td>
+              <td style="font-size:12px">${t.assignee || '—'}</td>
+              <td class="text-right ${t.ageDays > 7 ? 'text-red' : ''}" style="font-size:12px">${t.ageDays}d</td>
+            </tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </div>` : ''}
       <div id="drill-panel-container"></div>
       <div class="section">
         <h2>Monthly Volume Trend</h2>
