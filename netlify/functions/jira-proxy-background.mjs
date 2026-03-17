@@ -234,8 +234,8 @@ function computeMetrics(tickets) {
   tickets.forEach(t => { statusCounts[t.status] = (statusCounts[t.status]||0)+1; });
 
   // Open tickets for drill-down (backlog detail)
-  const openS = ['Pending','Waiting for Customer','Reopened','In Progress','Waiting for support','Open','To Do'];
-  const openTickets = tickets.filter(t => openS.includes(t.status)).map(t => ({
+  const openStatuses = ['Pending','Waiting for Customer','Reopened','In Progress','Waiting for support','Open','To Do'];
+  const openTickets = tickets.filter(t => openStatuses.includes(t.status)).map(t => ({
     key: t.key, projectKey: t.projectKey, summary: t.summary, status: t.status,
     partner: t.partner, labels: t.labels, assignee: t.assignee, priority: t.priority,
     created: t.created, ageDays: t.created ? Math.round((now - new Date(t.created))/864e5) : 0,

@@ -6,7 +6,26 @@ export default async (req, context) => {
   }
 
   try {
+    const url = new URL(req.url);
+    const forceRefresh = url.searchParams.get('refresh') === 'true';
     const store = getStore('jira-cache');
+
+    // Force refresh: clear cache and trigger background rebuild
+    if (forceRefresh) {
+      await store.delete('metrics');
+      const bgUrl = new URL(req.url);
+      bgUrl.pathname = '/.netlify/functions/jira-proxy-background';
+      bgUrl.search = '';
+      fetch(bgUrl.toString(), { method: 'POST' }).catch(() => {});
+      return new Response(JSON.stringify({
+        loading: true,
+        message: 'Cache cleared. Background refresh triggered. Reload in 1-2 minutes.',
+      }), {
+        status: 202,
+        headers: corsHeaders(),
+      });
+    }
+
     const cached = await store.get('metrics', { type: 'json' });
 
     if (cached) {
@@ -16,7 +35,8 @@ export default async (req, context) => {
 
       if (stale) {
         const bgUrl = new URL(req.url);
-        bgUrl.pathname = '/api/jira-proxy-background';
+        bgUrl.pathname = '/.netlify/functions/jira-proxy-background';
+        bgUrl.search = '';
         fetch(bgUrl.toString(), { method: 'POST' }).catch(() => {});
       }
 
@@ -28,7 +48,8 @@ export default async (req, context) => {
 
     // No cache — trigger background and tell frontend to wait
     const bgUrl = new URL(req.url);
-    bgUrl.pathname = '/api/jira-proxy-background';
+    bgUrl.pathname = '/.netlify/functions/jira-proxy-background';
+    bgUrl.search = '';
     fetch(bgUrl.toString(), { method: 'POST' }).catch(() => {});
 
     return new Response(JSON.stringify({
