@@ -127,9 +127,10 @@ function transformIssue(issue) {
   const extComments = comments.filter(c => !c.isInternal).map(c => ({ dt: c.created, author: c.author, email: c.email }));
   const labels = (f.labels || []);
   const components = (f.components || []).map(c => c.name || '');
-  // FIXED: Partner comes ONLY from Jira Components — never from labels
-  // Labels are a separate free-text field tracked independently
-  const partner = components[0] || '';
+  // Partner comes from the custom "Partner" dropdown field (customfield_10942)
+  // Falls back to Components if the custom field is empty
+  const partnerField = f.customfield_10942;
+  const partner = (partnerField && partnerField.value) ? partnerField.value : (components[0] || '');
 
   return {
     key, projectKey,
@@ -436,6 +437,7 @@ export default async (req, context) => {
     const fields = [
       'summary','status','priority','assignee','reporter','created','updated',
       'issuetype','labels','components','comment','resolution','resolutiondate',
+      'customfield_10942', // Partner dropdown
     ];
 
     // Fetch per-project in parallel for speed
@@ -450,37 +452,6 @@ export default async (req, context) => {
         return issues;
       })
     );
-
-    // Field discovery: fetch one ticket with ALL fields to find custom "Partner" dropdown
-    try {
-      const sampleRes = await fetch(`${BASE_URL}/search/jql`, {
-        method: 'POST',
-        headers: { Authorization: AUTH_HEADER, Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jql: 'project = MCQM ORDER BY created DESC', maxResults: 1 }),
-      });
-      if (sampleRes.ok) {
-        const sampleData = await sampleRes.json();
-        const sampleFields = sampleData.issues?.[0]?.fields || {};
-        // Log all custom fields that contain "partner" in their key or have a value that looks like a partner
-        const customFields = Object.entries(sampleFields).filter(([k]) => k.startsWith('customfield_'));
-        const partnerLike = customFields.filter(([k, v]) => {
-          if (!v) return false;
-          const vStr = JSON.stringify(v).toLowerCase();
-          return vStr.includes('partner') || (typeof v === 'object' && v.value);
-        });
-        console.log('FIELD DISCOVERY — custom fields with values:', customFields.filter(([k,v]) => v !== null).map(([k,v]) => `${k}=${JSON.stringify(v).slice(0,120)}`).join(' | '));
-        console.log('FIELD DISCOVERY — partner-like fields:', partnerLike.map(([k,v]) => `${k}=${JSON.stringify(v).slice(0,200)}`).join(' | '));
-      }
-      // Also fetch field definitions from Jira
-      const fieldDefRes = await fetch(`${BASE_URL}/field`, {
-        headers: { Authorization: AUTH_HEADER, Accept: 'application/json' },
-      });
-      if (fieldDefRes.ok) {
-        const fieldDefs = await fieldDefRes.json();
-        const partnerFields = fieldDefs.filter(f => f.name && f.name.toLowerCase().includes('partner'));
-        console.log('FIELD DEFS — partner fields:', partnerFields.map(f => `${f.id} (${f.name}, ${f.schema?.type || 'unknown'})`).join(' | '));
-      }
-    } catch (e) { console.log('Field discovery error:', e.message); }
 
     const results = await Promise.all(fetches);
     const allIssues = results.flat();

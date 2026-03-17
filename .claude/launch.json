@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mcqm-dashboard",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "public", "-l", "8890"],
+      "port": 8890
+    }
+  ]
+}
