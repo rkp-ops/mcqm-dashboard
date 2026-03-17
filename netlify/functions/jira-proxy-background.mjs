@@ -99,7 +99,7 @@ function computeMetrics(tickets) {
   const openS = ['Pending','Waiting for Customer','Reopened','In Progress','Waiting for support','Open','To Do'];
   const openCount = tickets.filter(t => openS.includes(t.status)).length;
   const reopenedTix = tickets.filter(t => t.reopenCount > 0).map(t => ({
-    key: t.key, partner: t.partner, assignee: t.assignee,
+    key: t.key, partner: t.partner, labels: t.labels, assignee: t.assignee,
     ageDays: t.created ? Math.round((now - new Date(t.created))/864e5) : 0,
     created: t.created,
   }));

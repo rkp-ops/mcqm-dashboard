@@ -247,8 +247,7 @@ const CONFIG = {
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'demand', label: 'Demand & Arrivals' },
-  { id: 'partners', label: 'Partners & Volume' },
-  { id: 'labels', label: 'Labels & Tags' },
+  { id: 'partners', label: 'Labels & Volume' },
   { id: 'cycle', label: 'Cycle Time' },
   { id: 'reopen', label: 'Reopens & Recontact' },
   { id: 'team', label: 'Team & Staffing' },
@@ -926,38 +925,57 @@ function renderContent() {
   }
 
   else if (currentTab === 'partners') {
+    const lv = DATA.labelVolume || [];
+    const pv = DATA.partnerVolume || [];
+    const hasPartners = pv.length > 0;
+    const primaryData = hasPartners ? pv : lv;
+    const primaryLabel = hasPartners ? 'Partner' : 'Label';
+
     el.innerHTML = `
       <div class="section">
-        <h2>Volume by Partner (Top 15)</h2>
-        <div class="chart-container"><canvas id="chart-partner" height="340"></canvas></div>
+        <h2>Volume by ${primaryLabel} (Top ${hasPartners ? 15 : 30})</h2>
+        ${!hasPartners ? '<div style="font-size:12px;color:var(--gray-500);margin-top:-12px;margin-bottom:12px">Categorized by Jira Labels</div>' : ''}
+        <div class="chart-container"><canvas id="chart-partner" height="${Math.max(340, primaryData.length * 22)}"></canvas></div>
       </div>
       <div class="section">
+        <h2>Label Detail</h2>
+        <table>
+          <thead><tr><th>Label</th><th class="text-right">Tickets</th><th class="text-right">% of Total</th></tr></thead>
+          <tbody>${lv.map(l => `<tr><td class="font-bold">${l.label}</td><td class="text-right">${l.tickets.toLocaleString()}</td><td class="text-right">${(l.tickets / DATA.summary.totalTickets * 100).toFixed(1)}%</td></tr>`).join('')}</tbody>
+        </table>
+        ${lv.length === 0 ? '<div class="info-box info-amber" style="margin-top:12px">No label data available.</div>' : ''}
+      </div>
+      ${hasPartners ? `<div class="section">
         <h2>Post-Resolve Recontact Rate by Partner (24h)</h2>
         <div class="chart-container"><canvas id="chart-recontact-partner" height="280"></canvas></div>
         <div class="note">Red = above 10%. Amber = above 7%.</div>
-      </div>
+      </div>` : ''}
       <div class="section">
         <h2>Volume by Priority</h2>
         <div class="chart-container"><canvas id="chart-priority" height="180"></canvas></div>
       </div>`;
 
-    makeChart('chart-partner', {
-      type: 'bar',
-      data: {
-        labels: DATA.partnerVolume.map(d=>d.partner),
-        datasets: [{ data: DATA.partnerVolume.map(d=>d.tickets), backgroundColor:'#0f766e', borderRadius:4 }]
-      },
-      options: { indexAxis:'y', responsive:true, plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true}} }
-    });
+    if (primaryData.length > 0) {
+      makeChart('chart-partner', {
+        type: 'bar',
+        data: {
+          labels: hasPartners ? primaryData.map(d=>d.partner) : primaryData.map(d=>d.label),
+          datasets: [{ data: primaryData.map(d=>d.tickets), backgroundColor: hasPartners ? '#0f766e' : '#7c3aed', borderRadius:4 }]
+        },
+        options: { indexAxis:'y', responsive:true, plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true}} }
+      });
+    }
 
-    makeChart('chart-recontact-partner', {
-      type: 'bar',
-      data: {
-        labels: DATA.partnerRecontact.map(d=>d.partner),
-        datasets: [{ data: DATA.partnerRecontact.map(d=>d.rate), backgroundColor: DATA.partnerRecontact.map(d=>d.rate>10?'#dc2626':d.rate>7?'#d97706':'#059669'), borderRadius:4 }]
-      },
-      options: { indexAxis:'y', responsive:true, plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true, ticks:{callback:v=>v+'%'}}} }
-    });
+    if (hasPartners && DATA.partnerRecontact.length > 0) {
+      makeChart('chart-recontact-partner', {
+        type: 'bar',
+        data: {
+          labels: DATA.partnerRecontact.map(d=>d.partner),
+          datasets: [{ data: DATA.partnerRecontact.map(d=>d.rate), backgroundColor: DATA.partnerRecontact.map(d=>d.rate>10?'#dc2626':d.rate>7?'#d97706':'#059669'), borderRadius:4 }]
+        },
+        options: { indexAxis:'y', responsive:true, plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true, ticks:{callback:v=>v+'%'}}} }
+      });
+    }
 
     makeChart('chart-priority', {
       type: 'bar',
@@ -1016,10 +1034,11 @@ function renderContent() {
       <div class="section">
         <h2>Currently Reopened Tickets (${DATA.reopenedTickets.length})</h2>
         <table>
-          <thead><tr><th>Key</th><th>Partner</th><th>Assignee</th><th class="text-right">Age (days)</th></tr></thead>
+          <thead><tr><th>Key</th><th>Labels</th><th>Assignee</th><th class="text-right">Age (days)</th></tr></thead>
           <tbody>${DATA.reopenedTickets.map(t => {
             const age = t.created ? Math.round((new Date() - t.created)/86400000) : '?';
-            return `<tr><td class="mono font-bold">${t.key}</td><td>${t.partner||'--'}</td><td>${t.assignee||'--'}</td><td class="text-right ${age>5?'text-red':''}">${age}</td></tr>`;
+            const lbls = (t.labels && t.labels.length > 0) ? t.labels.join(', ') : (t.partner || '--');
+            return `<tr><td class="mono font-bold">${t.key}</td><td>${lbls}</td><td>${t.assignee||'--'}</td><td class="text-right ${age>5?'text-red':''}">${age}</td></tr>`;
           }).join('')}</tbody>
         </table>
       </div>
@@ -1030,35 +1049,6 @@ function renderContent() {
           <tbody>${DATA.partnerRecontact.map(p => `<tr><td class="font-bold">${p.partner}</td><td class="text-right">${p.total.toLocaleString()}</td><td class="text-right">${p.count}</td><td class="text-right ${p.rate>10?'text-red':p.rate>7?'text-amber':''}">${p.rate}%</td></tr>`).join('')}</tbody>
         </table>
       </div>`;
-  }
-
-  else if (currentTab === 'labels') {
-    const lv = DATA.labelVolume || [];
-    el.innerHTML = `
-      <div class="section">
-        <h2>Ticket Volume by Label (Top 30)</h2>
-        <div style="font-size:12px;color:var(--gray-500);margin-top:-12px;margin-bottom:12px">Labels are free-text tags set on Jira tickets — distinct from the Partner (Component) field</div>
-        <div class="chart-container"><canvas id="chart-labels" height="400"></canvas></div>
-      </div>
-      <div class="section">
-        <h2>Label Detail</h2>
-        <table>
-          <thead><tr><th>Label</th><th class="text-right">Tickets</th><th class="text-right">% of Total</th></tr></thead>
-          <tbody>${lv.map(l => `<tr><td class="font-bold">${l.label}</td><td class="text-right">${l.tickets.toLocaleString()}</td><td class="text-right">${(l.tickets / DATA.summary.totalTickets * 100).toFixed(1)}%</td></tr>`).join('')}</tbody>
-        </table>
-        ${lv.length === 0 ? '<div class="info-box info-amber" style="margin-top:12px">No label data available. Labels will appear once data refreshes from Jira.</div>' : ''}
-      </div>`;
-
-    if (lv.length > 0) {
-      makeChart('chart-labels', {
-        type: 'bar',
-        data: {
-          labels: lv.map(l => l.label),
-          datasets: [{ data: lv.map(l => l.tickets), backgroundColor: '#7c3aed', borderRadius: 4 }]
-        },
-        options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
-      });
-    }
   }
 
   else if (currentTab === 'team') {
@@ -1120,12 +1110,12 @@ function drillKPI(metric) {
     container.innerHTML = `<div class="drill-panel">
       <h3>Open Backlog — ${tickets.length} tickets <span class="close-btn" onclick="document.getElementById('drill-panel-container').innerHTML=''">&times;</span></h3>
       <table>
-        <thead><tr><th>Key</th><th>Summary</th><th>Status</th><th>Partner</th><th>Assignee</th><th>Priority</th><th class="text-right">Age</th></tr></thead>
+        <thead><tr><th>Key</th><th>Summary</th><th>Status</th><th>Labels</th><th>Assignee</th><th>Priority</th><th class="text-right">Age</th></tr></thead>
         <tbody>${tickets.slice(0, 100).map(t => `<tr>
           <td class="mono"><a href="${t.jiraUrl}" target="_blank">${t.key}</a></td>
           <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.summary || ''}</td>
           <td>${t.status}</td>
-          <td>${t.partner || '—'}</td>
+          <td>${(t.labels && t.labels.length > 0) ? t.labels.join(', ') : (t.partner || '—')}</td>
           <td>${t.assignee || '—'}</td>
           <td>${t.priority || '—'}</td>
           <td class="text-right ${t.ageDays > 7 ? 'text-red' : ''}">${t.ageDays}d</td>
@@ -1156,10 +1146,10 @@ function drillKPI(metric) {
     container.innerHTML = `<div class="drill-panel">
       <h3>Currently Reopened — ${tickets.length} tickets <span class="close-btn" onclick="document.getElementById('drill-panel-container').innerHTML=''">&times;</span></h3>
       <table>
-        <thead><tr><th>Key</th><th>Partner</th><th>Assignee</th><th class="text-right">Age (days)</th></tr></thead>
+        <thead><tr><th>Key</th><th>Labels</th><th>Assignee</th><th class="text-right">Age (days)</th></tr></thead>
         <tbody>${tickets.map(t => `<tr>
           <td class="mono"><a href="https://steadymd.atlassian.net/browse/${t.key}" target="_blank">${t.key}</a></td>
-          <td>${t.partner || '—'}</td>
+          <td>${(t.labels && t.labels.length > 0) ? t.labels.join(', ') : (t.partner || '—')}</td>
           <td>${t.assignee || '—'}</td>
           <td class="text-right ${t.ageDays > 5 ? 'text-red' : ''}">${t.ageDays}d</td>
         </tr>`).join('')}</tbody>
@@ -1169,6 +1159,9 @@ function drillKPI(metric) {
 
   else if (metric === 'resolved') {
     const pv = DATA.partnerVolume || [];
+    const lv = DATA.labelVolume || [];
+    const catData = pv.length > 0 ? pv : lv;
+    const catLabel = pv.length > 0 ? 'Partner' : 'Label';
     container.innerHTML = `<div class="drill-panel">
       <h3>Resolution Breakdown <span class="close-btn" onclick="document.getElementById('drill-panel-container').innerHTML=''">&times;</span></h3>
       <div class="kpi-grid" style="margin-bottom:16px">
@@ -1176,10 +1169,10 @@ function drillKPI(metric) {
         <div class="kpi"><div class="label">Resolution Rate</div><div class="value">${(DATA.summary.resolvedCount/DATA.summary.totalTickets*100).toFixed(1)}%</div></div>
         <div class="kpi"><div class="label">Median CT</div><div class="value">${DATA.summary.medianCycleHrs}h</div></div>
       </div>
-      <h3 style="font-size:13px;margin-bottom:8px">Top Partners by Volume</h3>
+      <h3 style="font-size:13px;margin-bottom:8px">Top ${catLabel}s by Volume</h3>
       <table>
-        <thead><tr><th>Partner</th><th class="text-right">Tickets</th></tr></thead>
-        <tbody>${pv.map(p => `<tr><td class="font-bold">${p.partner || '(no component)'}</td><td class="text-right">${p.tickets.toLocaleString()}</td></tr>`).join('')}</tbody>
+        <thead><tr><th>${catLabel}</th><th class="text-right">Tickets</th></tr></thead>
+        <tbody>${catData.map(p => `<tr><td class="font-bold">${p.partner || p.label || '—'}</td><td class="text-right">${p.tickets.toLocaleString()}</td></tr>`).join('')}</tbody>
       </table>
     </div>`;
   }
