@@ -271,10 +271,10 @@ const SCHED_DAYS_SUN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const SCHED_RANGE = { start: 7, end: 21 }; // timeline display range
 const SCHED_COVERAGE = { start: 8, end: 20 }; // required coverage window
 
-const STAFF = [
+const STAFF_DEFAULTS = [
   { name: 'Zoie', color: 'teal', tz: 'Central',
     baseStart: 8, baseEnd: 17, flexHours: 1,
-    fixedDaysOff: ['Sat','Sun'], minDaysOff: 2, maxHrs: null, maxDailyHrs: 9, salaried: true },
+    fixedDaysOff: ['Sat','Sun'], minDaysOff: 2, maxHrs: 40, maxDailyHrs: 9, salaried: true },
   { name: 'Brionna', color: 'blue', tz: 'Central',
     baseStart: 8, baseEnd: 17, flexHours: null,
     fixedDaysOff: [], minDaysOff: 2, maxHrs: 45, maxDailyHrs: 9, salaried: false },
@@ -282,6 +282,28 @@ const STAFF = [
     baseStart: 8, baseEnd: 16, flexHours: null,
     fixedDaysOff: [], minDaysOff: 2, maxHrs: 35, maxDailyHrs: 8, salaried: false },
 ];
+
+// Load saved staff config from localStorage, falling back to defaults
+function loadStaffConfig() {
+  try {
+    const saved = localStorage.getItem('mcqm_staff_config');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Merge saved values onto defaults (preserves new fields added later)
+      return STAFF_DEFAULTS.map(def => {
+        const s = parsed.find(p => p.name === def.name);
+        return s ? { ...def, ...s } : { ...def };
+      });
+    }
+  } catch (e) { console.warn('Failed to load staff config:', e); }
+  return STAFF_DEFAULTS.map(d => ({ ...d }));
+}
+
+function saveStaffConfig() {
+  localStorage.setItem('mcqm_staff_config', JSON.stringify(STAFF));
+}
+
+let STAFF = loadStaffConfig();
 
 let currentScheduleWeek = 0;
 let generatedSchedule = null;
@@ -1052,28 +1074,75 @@ function renderContent() {
   }
 
   else if (currentTab === 'team') {
-    // Dynamic staffing info from STAFF config
-    const staffRows = STAFF.map(p => {
-      const daysOff = p.fixedDaysOff.length > 0 ? p.fixedDaysOff.join(', ') : 'Rotating (2/week)';
-      const schedule = `${schedFmtTime(p.baseStart)} - ${schedFmtTime(p.baseEnd + (p.flexHours || 0))} CT`;
-      const maxLabel = p.maxHrs ? `${p.maxHrs}h/wk max` : 'Salaried';
-      const bgColors = { teal: '', blue: 'background:#eff6ff', amber: 'background:#fffbeb' };
-      return `<tr style="${bgColors[p.color] || ''}">
-        <td class="font-bold">${p.name}</td>
-        <td>${schedule}</td>
-        <td style="font-size:12px;color:#6b7280">${maxLabel} &middot; Off: ${daysOff}</td>
-        <td class="text-right">${p.maxHrs || 40}</td>
+    // Build time option helpers
+    const timeOpts = (selected, min, max) => {
+      let html = '';
+      for (let h = min; h <= max; h++) {
+        for (let m = 0; m < 60; m += 30) {
+          const val = h + m / 60;
+          const label = schedFmtTime(val);
+          html += `<option value="${val}" ${val === selected ? 'selected' : ''}>${label}</option>`;
+        }
+      }
+      return html;
+    };
+
+    const staffRows = STAFF.map((p, i) => {
+      const bgColors = { teal: '#f0fdfa', blue: '#eff6ff', amber: '#fffbeb' };
+      const daysOff = p.fixedDaysOff.length > 0 ? p.fixedDaysOff.join(', ') : 'Rotating';
+      const endTime = p.baseEnd + (p.flexHours || 0);
+      return `<tr style="background:${bgColors[p.color] || ''}">
+        <td class="font-bold" style="white-space:nowrap">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--${p.color});margin-right:6px"></span>${p.name}
+          ${p.salaried ? '<span style="font-size:10px;background:#e0e7ff;color:#4338ca;padding:1px 5px;border-radius:3px;margin-left:4px">Salaried</span>' : ''}
+        </td>
+        <td>
+          <div style="display:flex;gap:4px;align-items:center">
+            <select id="staff-start-${i}" onchange="updateStaffField(${i},'baseStart',parseFloat(this.value))" style="padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:white">
+              ${timeOpts(p.baseStart, 6, 12)}
+            </select>
+            <span style="color:var(--gray-400)">to</span>
+            <select id="staff-end-${i}" onchange="updateStaffField(${i},'baseEnd',parseFloat(this.value))" style="padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:white">
+              ${timeOpts(endTime, 12, 21)}
+            </select>
+            <span style="font-size:11px;color:var(--gray-400)">CT</span>
+          </div>
+        </td>
+        <td>
+          <div style="display:flex;gap:4px;align-items:center">
+            <input type="number" id="staff-maxhrs-${i}" value="${p.maxHrs || 40}" min="10" max="60" step="1"
+              onchange="updateStaffField(${i},'maxHrs',parseFloat(this.value))"
+              style="width:54px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;text-align:center">
+            <span style="font-size:11px;color:var(--gray-400)">hrs/wk</span>
+          </div>
+        </td>
+        <td>
+          <div style="display:flex;gap:4px;align-items:center">
+            <input type="number" id="staff-maxdaily-${i}" value="${p.maxDailyHrs || 9}" min="4" max="12" step="0.5"
+              onchange="updateStaffField(${i},'maxDailyHrs',parseFloat(this.value))"
+              style="width:54px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;text-align:center">
+            <span style="font-size:11px;color:var(--gray-400)">hrs/day</span>
+          </div>
+        </td>
+        <td style="font-size:11px;color:var(--gray-500)">${daysOff}</td>
       </tr>`;
     }).join('');
 
     el.innerHTML = `
       <div class="section">
-        <h2>Team Configuration (Central Time)</h2>
-        <table>
-          <thead><tr><th>Name</th><th>Available Window (CT)</th><th>Constraints</th><th class="text-right">Max Hrs/Wk</th></tr></thead>
-          <tbody>${staffRows}</tbody>
-        </table>
-        <div class="note">Brionna & Bella rotate weekend coverage (Sat/Sun). Zoie is always off Sat/Sun. Brionna: up to 45h/wk, 2 days off, flexible scheduling. Bella: max 35h/wk, 2 days off. Schedule generates from ticket demand patterns.</div>
+        <h2>Staff Availability & Constraints</h2>
+        <div style="font-size:12px;color:var(--gray-500);margin-top:-12px;margin-bottom:12px">Edit availability below, then click <strong>Apply & Regenerate</strong> to update the schedule</div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Name</th><th>Earliest Start — Latest End</th><th>Max/Wk</th><th>Max/Day</th><th>Fixed Days Off</th></tr></thead>
+            <tbody>${staffRows}</tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+          <button class="btn btn-teal" onclick="applyStaffChanges()" style="font-size:12px;font-weight:600">Apply & Regenerate Schedule</button>
+          <button class="btn" onclick="resetStaffDefaults()" style="font-size:11px">Reset to Defaults</button>
+          <span id="staff-save-status" style="font-size:11px;color:var(--teal);opacity:0;transition:opacity 0.3s"></span>
+        </div>
       </div>
       <div class="section">
         <h2>Assignee Volume</h2>
@@ -1306,17 +1375,19 @@ function generateSchedule(demandModel, staff, numWeeks) {
       });
 
       // Two-pass assignment: first spread coverage, then optimize
-      // Pass 1: Assign Zoie (salaried, flex start 8-9 AM, max 9hrs/day)
-      const zoie = working.find(p => p.flexHours !== null);
-      if (zoie) {
-        const maxDaily = zoie.maxDailyHrs || 9;
+      // Pass 1: Assign salaried/flex-start staff (e.g. Zoie)
+      const flexStaff = working.find(p => p.flexHours !== null);
+      if (flexStaff) {
+        const maxDaily = flexStaff.maxDailyHrs || 9;
+        const latestEnd = flexStaff.baseEnd + (flexStaff.flexHours || 0);
         let bestStart, bestEnd, bestScore = -1;
-        // Try start times from 8 to 9 in 30-min steps
-        for (let s = zoie.baseStart; s <= zoie.baseStart + zoie.flexHours; s += 0.5) {
-          // Try shift lengths from 8 to maxDaily hours
-          for (let len = 8; len <= maxDaily; len += 0.5) {
+        // Try start times within flex window in 30-min steps
+        for (let s = flexStaff.baseStart; s <= flexStaff.baseStart + flexStaff.flexHours; s += 0.5) {
+          // Try shift lengths from min(8, maxDaily) to maxDaily hours
+          const minLen = Math.min(8, maxDaily);
+          for (let len = minLen; len <= maxDaily; len += 0.5) {
             const e = s + len;
-            if (e > 18) continue; // Don't go past 6 PM
+            if (e > latestEnd) continue; // Don't go past configured end
             let score = 0;
             for (let h = Math.floor(s); h < e; h++) score += demandModel[day][h] || 0;
             // Strong bonus for covering 8 AM start (coverage window opens)
@@ -1325,7 +1396,7 @@ function generateSchedule(demandModel, staff, numWeeks) {
           }
         }
         if (bestStart !== undefined) {
-          weekShifts[day].push({ name: zoie.name, start: bestStart, end: bestEnd, color: zoie.color });
+          weekShifts[day].push({ name: flexStaff.name, start: bestStart, end: bestEnd, color: flexStaff.color });
         }
       }
 
@@ -1528,6 +1599,38 @@ function regenerateSchedule() {
   generatedSchedule = generateSchedule(buildDemandModel(), STAFF, 4);
   const el = document.getElementById('main-content');
   renderScheduleTab(el);
+}
+
+function updateStaffField(idx, field, value) {
+  if (field === 'baseEnd') {
+    // User picks the latest end time; strip flexHours from it for baseEnd
+    const flex = STAFF[idx].flexHours || 0;
+    STAFF[idx].baseEnd = value - flex;
+  } else {
+    STAFF[idx][field] = value;
+  }
+  // Auto-calc maxDailyHrs cap: can't exceed (latest end - earliest start)
+  const maxWindow = (STAFF[idx].baseEnd + (STAFF[idx].flexHours || 0)) - STAFF[idx].baseStart;
+  if (STAFF[idx].maxDailyHrs > maxWindow) STAFF[idx].maxDailyHrs = maxWindow;
+}
+
+function applyStaffChanges() {
+  saveStaffConfig();
+  scheduleOverrides = {};
+  generatedSchedule = generateSchedule(buildDemandModel(), STAFF, 4);
+  // Flash confirmation
+  const msg = document.getElementById('staff-save-status');
+  if (msg) { msg.textContent = 'Saved & schedule regenerated'; msg.style.opacity = '1'; setTimeout(() => msg.style.opacity = '0', 2500); }
+  // Switch to schedule tab to show the result
+  switchTab('schedule');
+}
+
+function resetStaffDefaults() {
+  STAFF = STAFF_DEFAULTS.map(d => ({ ...d }));
+  saveStaffConfig();
+  scheduleOverrides = {};
+  generatedSchedule = generateSchedule(buildDemandModel(), STAFF, 4);
+  renderContent();
 }
 
 function getEffectiveWeek(weekIdx) {
@@ -1785,13 +1888,14 @@ function renderScheduleTimeline(week, demandModel) {
 
 function renderScheduleLegend() {
   return `<div style="display:flex;flex-direction:column;gap:8px;padding:8px 0">
-    ${STAFF.map(p => `
-      <div style="display:flex;align-items:center;gap:8px">
+    ${STAFF.map(p => {
+      const endT = p.baseEnd + (p.flexHours || 0);
+      return `<div style="display:flex;align-items:center;gap:8px">
         <span style="width:12px;height:12px;border-radius:3px;background:var(--${p.color});flex-shrink:0"></span>
         <span style="font-size:13px;font-weight:600;color:var(--gray-800)">${p.name}</span>
-        <span style="font-size:11px;color:var(--gray-500)">${p.tz} Time</span>
-      </div>
-    `).join('')}
+        <span style="font-size:11px;color:var(--gray-500)">${schedFmtTime(p.baseStart)}-${schedFmtTime(endT)} CT &middot; ${p.maxHrs || 40}h/wk &middot; ${p.maxDailyHrs || 9}h/day</span>
+      </div>`;
+    }).join('')}
     <div style="display:flex;align-items:center;gap:8px;margin-top:4px;padding-top:8px;border-top:1px solid var(--gray-200)">
       <span style="width:12px;height:12px;border-radius:3px;background:rgba(15,118,110,0.06);border:1px solid var(--gray-200);flex-shrink:0"></span>
       <span style="font-size:11px;color:var(--gray-500)">Shaded = required coverage (8a-8p CT)</span>
