@@ -98,11 +98,14 @@ function computeMetrics(tickets) {
 
   const openS = ['Pending','Waiting for Customer','Reopened','In Progress','Waiting for support','Open','To Do'];
   const openCount = tickets.filter(t => openS.includes(t.status)).length;
-  const reopenedTix = tickets.filter(t => t.reopenCount > 0).map(t => ({
-    key: t.key, partner: t.partner, labels: t.labels, assignee: t.assignee,
+  // Tickets CURRENTLY in Reopened status (the snapshot)
+  const reopenedTix = tickets.filter(t => t.status === 'Reopened').map(t => ({
+    key: t.key, partner: t.partner, labels: t.labels, assignee: t.assignee, status: t.status,
     ageDays: t.created ? Math.round((now - new Date(t.created))/864e5) : 0,
-    created: t.created,
+    created: t.created, reopenCount: t.reopenCount,
   }));
+  // Tickets that were EVER reopened (for Reopens tab analysis)
+  const everReopenedCount = tickets.filter(t => t.reopenCount > 0).length;
 
   const resolved = tickets.filter(t => t.resolved && t.created);
   const cts = resolved.map(t => (new Date(t.resolved) - new Date(t.created))/36e5).filter(h => h >= 0);
@@ -247,7 +250,7 @@ function computeMetrics(tickets) {
     cachedAt: now.toISOString(),
     summary: {
       totalTickets: total, totalRows: total, projectKeys: pkC, dateRange,
-      resolvedCount: resolved.length, openCount, reopenedSnapshot: reopenedTix.length,
+      resolvedCount: resolved.length, openCount, reopenedSnapshot: reopenedTix.length, everReopenedCount,
       medianCycleHrs: r1(medCT), p75CycleHrs: r1(p75CT), p90CycleHrs: r1(p90CT),
       bizHoursPct: r1(total>0?bizCount/total*100:0),
       recontact24hPct: rc24Pct, recontact72hPct: rc72Pct,

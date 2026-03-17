@@ -860,7 +860,7 @@ function renderContent() {
           <div class="kpi clickable" onclick="drillKPI('total')"><div class="label">Total Tickets</div><div class="value">${s.totalTickets.toLocaleString()}</div><div class="sub">Unique ticket keys</div><div class="drill-hint">Click to view by status</div></div>
           <div class="kpi clickable" onclick="drillKPI('backlog')"><div class="label">Open Backlog</div><div class="value ${s.openCount>100?'amber':'green'}">${s.openCount}</div><div class="sub">Active tickets</div><div class="drill-hint">Click to view open tickets</div></div>
           <div class="kpi clickable" onclick="switchTab('cycle')"><div class="label">Median Cycle Time</div><div class="value">${s.medianCycleHrs}h</div><div class="sub">p75: ${s.p75CycleHrs}h | p90: ${s.p90CycleHrs}h</div><div class="drill-hint">Click for CT breakdown</div></div>
-          <div class="kpi clickable" onclick="drillKPI('reopened')"><div class="label">Reopened (Snapshot)</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Currently in Reopened status</div><div class="drill-hint">Click to view reopened</div></div>
+          <div class="kpi clickable" onclick="drillKPI('reopened')"><div class="label">Reopened Now</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Status = Reopened right now</div><div class="drill-hint">Click to view reopened</div></div>
           <div class="kpi clickable" onclick="drillKPI('resolved')"><div class="label">Resolved</div><div class="value green">${s.resolvedCount.toLocaleString()}</div><div class="sub">${(s.resolvedCount/s.totalTickets*100).toFixed(1)}% resolution rate</div><div class="drill-hint">Click for resolution details</div></div>
           <div class="kpi clickable" onclick="switchTab('reopen')"><div class="label">Recontact 24h</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">External comment after resolve</div><div class="drill-hint">Click for recontact analysis</div></div>
           <div class="kpi clickable" onclick="switchTab('demand')"><div class="label">Biz Hours Volume</div><div class="value">${s.bizHoursPct}%</div><div class="sub">8 AM - 8 PM CT, M-F</div><div class="drill-hint">Click for demand patterns</div></div>
@@ -1212,17 +1212,22 @@ function drillKPI(metric) {
 
   else if (metric === 'reopened') {
     const tickets = DATA.reopenedTickets || [];
+    const everCount = DATA.summary.everReopenedCount || 0;
     container.innerHTML = `<div class="drill-panel">
-      <h3>Currently Reopened — ${tickets.length} tickets <span class="close-btn" onclick="document.getElementById('drill-panel-container').innerHTML=''">&times;</span></h3>
-      <table>
-        <thead><tr><th>Key</th><th>Labels</th><th>Assignee</th><th class="text-right">Age (days)</th></tr></thead>
+      <h3>Currently in Reopened Status — ${tickets.length} tickets <span class="close-btn" onclick="document.getElementById('drill-panel-container').innerHTML=''">&times;</span></h3>
+      <div style="font-size:12px;color:var(--gray-500);margin-bottom:12px">These tickets have status = <strong>Reopened</strong> right now. ${everCount > 0 ? `(${everCount} tickets were ever reopened historically.)` : ''}</div>
+      ${tickets.length === 0 ? '<div style="padding:16px;color:var(--gray-500);text-align:center">No tickets currently in Reopened status</div>' : `<table>
+        <thead><tr><th>Key</th><th>Status</th><th>Partner</th><th>Labels</th><th>Assignee</th><th class="text-right">Times Reopened</th><th class="text-right">Age</th></tr></thead>
         <tbody>${tickets.map(t => `<tr>
           <td class="mono"><a href="https://steadymd.atlassian.net/browse/${t.key}" target="_blank">${t.key}</a></td>
-          <td>${(t.labels && t.labels.length > 0) ? t.labels.join(', ') : (t.partner || '—')}</td>
+          <td><span style="background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:3px;font-size:11px">${t.status}</span></td>
+          <td>${t.partner || '—'}</td>
+          <td>${(t.labels && t.labels.length > 0) ? t.labels.join(', ') : '—'}</td>
           <td>${t.assignee || '—'}</td>
+          <td class="text-right">${t.reopenCount || 1}</td>
           <td class="text-right ${t.ageDays > 5 ? 'text-red' : ''}">${t.ageDays}d</td>
         </tr>`).join('')}</tbody>
-      </table>
+      </table>`}
     </div>`;
   }
 
