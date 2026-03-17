@@ -1041,29 +1041,89 @@ function renderContent() {
   }
 
   else if (currentTab === 'reopen') {
+    const reopenEvents = DATA.allReopenEvents || [];
+    const recontactEvts = DATA.recontactEvents || [];
+    const topReopened = DATA.topReopenedTickets || [];
+    const reopenTrend = DATA.reopenTrend || [];
+    const recontactTrend = DATA.recontactTrend || [];
+    const fmtDt = d => { const dt = new Date(d); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); };
+    const fmtDtTime = d => { const dt = new Date(d); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); };
+
     el.innerHTML = `
       <div class="section">
         <h2>Reopen & Recontact Analysis</h2>
-        <div class="info-blue">
-          <p><strong>Live Jira data with full changelog.</strong> Reopen counts are derived from actual status transitions (Done/Resolved → non-final). Recontact rates use post-resolution external comments.</p>
+        <div class="info-blue" style="margin-bottom:16px">
+          <p><strong>Powered by live Jira changelog data.</strong> Every status transition and external comment is tracked. Reopens = transitions from a final status (Done/Resolved/Closed) back to a non-final status. Recontacts = external comments received after ticket resolution.</p>
         </div>
-        <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-top:12px">
-          <div class="kpi"><div class="label">Currently Reopened</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Snapshot status</div></div>
-          <div class="kpi"><div class="label">24h Recontact Rate</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">External comment after resolve</div></div>
-          <div class="kpi"><div class="label">72h Recontact Rate</div><div class="value amber">${s.recontact72hPct}%</div><div class="sub">External comment after resolve</div></div>
+        <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+          <div class="kpi"><div class="label">Reopened Now</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Current status = Reopened</div></div>
+          <div class="kpi"><div class="label">Ever Reopened</div><div class="value amber">${s.everReopenedCount || 0}</div><div class="sub">Tickets reopened at least once</div></div>
+          <div class="kpi"><div class="label">Total Reopen Events</div><div class="value">${reopenEvents.length}</div><div class="sub">Individual transitions</div></div>
+          <div class="kpi"><div class="label">24h Recontact Rate</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">Ext comment within 24h of resolve</div></div>
+          <div class="kpi"><div class="label">72h Recontact Rate</div><div class="value amber">${s.recontact72hPct}%</div><div class="sub">Ext comment within 72h of resolve</div></div>
         </div>
       </div>
+
+      <div class="two-col">
+        <div class="section">
+          <h2>Reopen Trend (Weekly)</h2>
+          <div class="chart-container"><canvas id="chart-reopen-trend" height="200"></canvas></div>
+        </div>
+        <div class="section">
+          <h2>Recontact Trend (Weekly)</h2>
+          <div class="chart-container"><canvas id="chart-recontact-trend" height="200"></canvas></div>
+        </div>
+      </div>
+
       <div class="section">
-        <h2>Currently Reopened Tickets (${DATA.reopenedTickets.length})</h2>
+        <h2>Most Reopened Tickets</h2>
+        <div style="font-size:12px;color:var(--gray-500);margin-top:-12px;margin-bottom:12px">Tickets with the most reopen transitions — investigate these for process issues</div>
         <table>
-          <thead><tr><th>Key</th><th>Labels</th><th>Assignee</th><th class="text-right">Age (days)</th></tr></thead>
-          <tbody>${DATA.reopenedTickets.map(t => {
-            const age = t.created ? Math.round((new Date() - t.created)/86400000) : '?';
-            const lbls = (t.labels && t.labels.length > 0) ? t.labels.join(', ') : (t.partner || '--');
-            return `<tr><td class="mono font-bold">${t.key}</td><td>${lbls}</td><td>${t.assignee||'--'}</td><td class="text-right ${age>5?'text-red':''}">${age}</td></tr>`;
-          }).join('')}</tbody>
+          <thead><tr><th>Key</th><th>Current Status</th><th>Partner</th><th>Assignee</th><th class="text-right">Times Reopened</th></tr></thead>
+          <tbody>${topReopened.map(t => `<tr>
+            <td class="mono"><a href="${t.jiraUrl}" target="_blank">${t.key}</a></td>
+            <td><span style="padding:2px 6px;border-radius:3px;font-size:11px;background:${t.status==='Reopened'?'#fee2e2':'#f3f4f6'};color:${t.status==='Reopened'?'#991b1b':'#374151'}">${t.status}</span></td>
+            <td>${t.partner || '—'}</td>
+            <td>${t.assignee || '—'}</td>
+            <td class="text-right font-bold ${t.count>=3?'text-red':t.count>=2?'text-amber':''}">${t.count}</td>
+          </tr>`).join('')}</tbody>
         </table>
       </div>
+
+      <div class="section">
+        <h2>Recent Reopen Events (Changelog)</h2>
+        <div style="font-size:12px;color:var(--gray-500);margin-top:-12px;margin-bottom:12px">Actual status transitions from the Jira changelog — showing most recent ${Math.min(reopenEvents.length, 50)}</div>
+        <table>
+          <thead><tr><th>Date</th><th>Key</th><th>Transition</th><th>Triggered By</th><th>Partner</th><th>Assignee</th><th>Status Now</th></tr></thead>
+          <tbody>${reopenEvents.slice(0, 50).map(ev => `<tr>
+            <td style="white-space:nowrap;font-size:12px">${fmtDtTime(ev.date)}</td>
+            <td class="mono"><a href="${ev.jiraUrl}" target="_blank">${ev.key}</a></td>
+            <td><span style="color:#991b1b;font-size:12px">${ev.from}</span> → <span style="color:#0f766e;font-size:12px">${ev.to}</span></td>
+            <td style="font-size:12px">${ev.author}</td>
+            <td>${ev.partner || '—'}</td>
+            <td>${ev.assignee || '—'}</td>
+            <td><span style="padding:2px 6px;border-radius:3px;font-size:11px;background:${ev.currentStatus==='Reopened'?'#fee2e2':'#f3f4f6'};color:${ev.currentStatus==='Reopened'?'#991b1b':'#374151'}">${ev.currentStatus}</span></td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>
+
+      <div class="section">
+        <h2>Recent Recontact Events</h2>
+        <div style="font-size:12px;color:var(--gray-500);margin-top:-12px;margin-bottom:12px">External comments received after ticket resolution — showing most recent ${Math.min(recontactEvts.length, 50)}</div>
+        <table>
+          <thead><tr><th>Comment Date</th><th>Key</th><th>Resolved At</th><th class="text-right">Hours After</th><th>Comment By</th><th>Partner</th><th>Assignee</th></tr></thead>
+          <tbody>${recontactEvts.slice(0, 50).map(ev => `<tr>
+            <td style="white-space:nowrap;font-size:12px">${fmtDtTime(ev.commentAt)}</td>
+            <td class="mono"><a href="${ev.jiraUrl}" target="_blank">${ev.key}</a></td>
+            <td style="font-size:12px">${fmtDtTime(ev.resolvedAt)}</td>
+            <td class="text-right ${ev.hoursAfter<=24?'text-red':'text-amber'}">${ev.hoursAfter}h ${ev.within24h?'<span style="font-size:9px;background:#fee2e2;color:#991b1b;padding:1px 4px;border-radius:2px">24h</span>':''}</td>
+            <td style="font-size:12px">${ev.commentAuthor}</td>
+            <td>${ev.partner || '—'}</td>
+            <td>${ev.assignee || '—'}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>
+
       <div class="section">
         <h2>Recontact Rate by Partner (24h)</h2>
         <table>
@@ -1071,6 +1131,28 @@ function renderContent() {
           <tbody>${DATA.partnerRecontact.map(p => `<tr><td class="font-bold">${p.partner}</td><td class="text-right">${p.total.toLocaleString()}</td><td class="text-right">${p.count}</td><td class="text-right ${p.rate>10?'text-red':p.rate>7?'text-amber':''}">${p.rate}%</td></tr>`).join('')}</tbody>
         </table>
       </div>`;
+
+    // Render trend charts
+    if (reopenTrend.length > 0) {
+      makeChart('chart-reopen-trend', {
+        type: 'bar',
+        data: {
+          labels: reopenTrend.map(d => d.week.slice(5)),
+          datasets: [{ label: 'Reopens', data: reopenTrend.map(d => d.count), backgroundColor: '#ef4444', borderRadius: 3 }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+      });
+    }
+    if (recontactTrend.length > 0) {
+      makeChart('chart-recontact-trend', {
+        type: 'bar',
+        data: {
+          labels: recontactTrend.map(d => d.week.slice(5)),
+          datasets: [{ label: 'Recontacts', data: recontactTrend.map(d => d.count), backgroundColor: '#d97706', borderRadius: 3 }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+      });
+    }
   }
 
   else if (currentTab === 'team') {

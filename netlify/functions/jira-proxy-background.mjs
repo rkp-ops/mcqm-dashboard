@@ -48,6 +48,7 @@ function transformIssue(issue) {
 
   const changelog = (issue.changelog?.histories || []);
   let reopenCount = 0;
+  const reopenEvents = [];
   const FINAL_STATUSES = ['done', 'closed', 'resolved', 'cancelled', 'declined', "won't do", 'wont do'];
   for (const history of changelog) {
     for (const item of history.items || []) {
@@ -56,12 +57,18 @@ function transformIssue(issue) {
         const toLower = (item.toString || '').toLowerCase();
         if (FINAL_STATUSES.includes(fromLower) && !FINAL_STATUSES.includes(toLower)) {
           reopenCount++;
+          reopenEvents.push({
+            date: history.created,
+            author: history.author?.displayName || 'System',
+            from: item.fromString,
+            to: item.toString,
+          });
         }
       }
     }
   }
 
-  const extComments = comments.filter(c => !c.isInternal).map(c => ({ dt: c.created }));
+  const extComments = comments.filter(c => !c.isInternal).map(c => ({ dt: c.created, author: c.author }));
   const labels = (f.labels || []);
   const components = (f.components || []).map(c => c.name || '');
   // FIXED: Partner comes ONLY from Jira Components — never from labels
@@ -79,7 +86,7 @@ function transformIssue(issue) {
     reporter: f.reporter?.displayName || 'Unknown',
     created: f.created,
     resolved: f.resolutiondate,
-    partner, labels, reopenCount, extComments,
+    partner, labels, reopenCount, reopenEvents, extComments,
     jiraUrl: `https://${JIRA_DOMAIN}/browse/${key}`,
   };
 }
@@ -106,6 +113,41 @@ function computeMetrics(tickets) {
   }));
   // Tickets that were EVER reopened (for Reopens tab analysis)
   const everReopenedCount = tickets.filter(t => t.reopenCount > 0).length;
+
+  // Build detailed reopen event log from changelog (most recent 200 events)
+  const allReopenEvents = [];
+  tickets.forEach(t => {
+    (t.reopenEvents || []).forEach(ev => {
+      allReopenEvents.push({
+        key: t.key, partner: t.partner, assignee: t.assignee, labels: t.labels,
+        currentStatus: t.status,
+        date: ev.date, author: ev.author, from: ev.from, to: ev.to,
+        jiraUrl: t.jiraUrl,
+      });
+    });
+  });
+  allReopenEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  // Reopen trend: count by week
+  const reopenByWeek = {};
+  allReopenEvents.forEach(ev => {
+    const d = new Date(ev.date);
+    const weekStart = new Date(d); weekStart.setDate(d.getDate() - d.getDay());
+    const wk = weekStart.toISOString().slice(0, 10);
+    reopenByWeek[wk] = (reopenByWeek[wk] || 0) + 1;
+  });
+  const reopenTrend = Object.entries(reopenByWeek).sort((a,b) => a[0].localeCompare(b[0])).slice(-26)
+    .map(([week, count]) => ({ week, count }));
+
+  // Top reopened tickets (most reopen events)
+  const reopenCountByKey = {};
+  allReopenEvents.forEach(ev => { reopenCountByKey[ev.key] = (reopenCountByKey[ev.key] || 0) + 1; });
+  const topReopenedTickets = Object.entries(reopenCountByKey)
+    .sort((a,b) => b[1] - a[1]).slice(0, 20)
+    .map(([key, count]) => {
+      const t = tickets.find(x => x.key === key);
+      return { key, count, partner: t?.partner || '', assignee: t?.assignee || '', status: t?.status || '', jiraUrl: t?.jiraUrl || '' };
+    });
 
   const resolved = tickets.filter(t => t.resolved && t.created);
   const cts = resolved.map(t => (new Date(t.resolved) - new Date(t.created))/36e5).filter(h => h >= 0);
@@ -218,6 +260,39 @@ function computeMetrics(tickets) {
   const rc24Pct = resolved.length>0 ? r1(rc24Keys.size/resolved.length*100) : 0;
   const rc72Pct = resolved.length>0 ? r1(rc72Keys.size/resolved.length*100) : 0;
 
+  // Build detailed recontact event log (most recent 200)
+  const recontactEvents = [];
+  tickets.forEach(t => {
+    if (!t.extComments) return;
+    t.extComments.forEach(c => {
+      const rm = resMap[t.key];
+      if (!rm || !rm.resolved) return;
+      const cdt = new Date(c.dt);
+      const dh = (cdt - rm.resolved) / 36e5;
+      if (dh > 0 && dh <= 72) {
+        recontactEvents.push({
+          key: t.key, partner: rm.partner || '', assignee: rm.assignee || '',
+          resolvedAt: rm.resolved.toISOString(),
+          commentAt: c.dt, commentAuthor: c.author || '',
+          hoursAfter: r1(dh), within24h: dh <= 24,
+          jiraUrl: t.jiraUrl,
+        });
+      }
+    });
+  });
+  recontactEvents.sort((a, b) => new Date(b.commentAt) - new Date(a.commentAt));
+
+  // Recontact trend by week
+  const recontactByWeek = {};
+  recontactEvents.forEach(ev => {
+    const d = new Date(ev.commentAt);
+    const weekStart = new Date(d); weekStart.setDate(d.getDate() - d.getDay());
+    const wk = weekStart.toISOString().slice(0, 10);
+    recontactByWeek[wk] = (recontactByWeek[wk] || 0) + 1;
+  });
+  const recontactTrend = Object.entries(recontactByWeek).sort((a,b) => a[0].localeCompare(b[0])).slice(-26)
+    .map(([week, count]) => ({ week, count }));
+
   const pResMap={};
   resolved.forEach(t=>{if(t.partner) pResMap[t.partner]=(pResMap[t.partner]||0)+1;});
   const partnerRecontact = Object.entries(rcByPartner)
@@ -260,6 +335,8 @@ function computeMetrics(tickets) {
     monthlyVolume, monthlyByPK, dailyVolume, dowVolume, hourlyVolume, heatmap,
     partnerVolume, labelVolume, priorityVolume, assigneeStats, assigneeVolume, cycleTimeDist: ctDist,
     partnerCycleTime, partnerRecontact, reopenedTickets: reopenedTix, openTickets, statusCounts,
+    allReopenEvents: allReopenEvents.slice(0, 200), reopenTrend, topReopenedTickets,
+    recontactEvents: recontactEvents.slice(0, 200), recontactTrend,
   };
 }
 
