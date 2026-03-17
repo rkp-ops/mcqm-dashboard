@@ -1046,21 +1046,23 @@ function renderContent() {
     const topReopened = DATA.topReopenedTickets || [];
     const reopenTrend = DATA.reopenTrend || [];
     const recontactTrend = DATA.recontactTrend || [];
-    const fmtDt = d => { const dt = new Date(d); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); };
+    const extEvents = reopenEvents.filter(e => e.externalTrigger);
+    const intEvents = reopenEvents.filter(e => !e.externalTrigger);
     const fmtDtTime = d => { const dt = new Date(d); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); };
 
     el.innerHTML = `
       <div class="section">
         <h2>Reopen & Recontact Analysis</h2>
         <div class="info-blue" style="margin-bottom:16px">
-          <p><strong>Powered by live Jira changelog data.</strong> Every status transition and external comment is tracked. Reopens = transitions from a final status (Done/Resolved/Closed) back to a non-final status. Recontacts = external comments received after ticket resolution.</p>
+          <p><strong>Powered by live Jira changelog.</strong> A <strong style="color:#991b1b">true reopen</strong> = a non-SteadyMD user's comment triggers a status change from Done/Resolved/Closed back to a non-final status. Internal reopens (by @steadymd.com agents) are tracked separately. Detection uses: (1) external comment within 5 min before the transition, or (2) transition author email is non-steadymd.com.</p>
         </div>
-        <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+        <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+          <div class="kpi" style="border-left:3px solid #ef4444"><div class="label">External Reopens</div><div class="value red">${s.externalReopenEvents || extEvents.length}</div><div class="sub">Non-SteadyMD triggered</div></div>
+          <div class="kpi"><div class="label">Internal Reopens</div><div class="value">${intEvents.length}</div><div class="sub">SteadyMD agent triggered</div></div>
           <div class="kpi"><div class="label">Reopened Now</div><div class="value red">${s.reopenedSnapshot}</div><div class="sub">Current status = Reopened</div></div>
-          <div class="kpi"><div class="label">Ever Reopened</div><div class="value amber">${s.everReopenedCount || 0}</div><div class="sub">Tickets reopened at least once</div></div>
-          <div class="kpi"><div class="label">Total Reopen Events</div><div class="value">${reopenEvents.length}</div><div class="sub">Individual transitions</div></div>
-          <div class="kpi"><div class="label">24h Recontact Rate</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">Ext comment within 24h of resolve</div></div>
-          <div class="kpi"><div class="label">72h Recontact Rate</div><div class="value amber">${s.recontact72hPct}%</div><div class="sub">Ext comment within 72h of resolve</div></div>
+          <div class="kpi"><div class="label">Ever Reopened</div><div class="value amber">${s.everReopenedCount || 0}</div><div class="sub">${s.everExternalReopenedCount || 0} by external users</div></div>
+          <div class="kpi"><div class="label">24h Recontact</div><div class="value amber">${s.recontact24hPct}%</div><div class="sub">Ext comment post-resolve</div></div>
+          <div class="kpi"><div class="label">72h Recontact</div><div class="value amber">${s.recontact72hPct}%</div><div class="sub">Ext comment post-resolve</div></div>
         </div>
       </div>
 
@@ -1077,35 +1079,59 @@ function renderContent() {
 
       <div class="section">
         <h2>Most Reopened Tickets</h2>
-        <div style="font-size:12px;color:var(--gray-500);margin-top:-12px;margin-bottom:12px">Tickets with the most reopen transitions — investigate these for process issues</div>
+        <div style="font-size:12px;color:var(--gray-500);margin-top:-12px;margin-bottom:12px">Sorted by total reopens — external count shown separately</div>
         <table>
-          <thead><tr><th>Key</th><th>Current Status</th><th>Partner</th><th>Assignee</th><th class="text-right">Times Reopened</th></tr></thead>
+          <thead><tr><th>Key</th><th>Status</th><th>Partner</th><th>Assignee</th><th class="text-right">External</th><th class="text-right">Total</th></tr></thead>
           <tbody>${topReopened.map(t => `<tr>
             <td class="mono"><a href="${t.jiraUrl}" target="_blank">${t.key}</a></td>
             <td><span style="padding:2px 6px;border-radius:3px;font-size:11px;background:${t.status==='Reopened'?'#fee2e2':'#f3f4f6'};color:${t.status==='Reopened'?'#991b1b':'#374151'}">${t.status}</span></td>
             <td>${t.partner || '—'}</td>
             <td>${t.assignee || '—'}</td>
-            <td class="text-right font-bold ${t.count>=3?'text-red':t.count>=2?'text-amber':''}">${t.count}</td>
+            <td class="text-right font-bold ${(t.external||0)>=2?'text-red':(t.external||0)>=1?'text-amber':''}">${t.external || 0}</td>
+            <td class="text-right">${t.total || t.count || 0}</td>
           </tr>`).join('')}</tbody>
         </table>
       </div>
 
       <div class="section">
-        <h2>Recent Reopen Events (Changelog)</h2>
-        <div style="font-size:12px;color:var(--gray-500);margin-top:-12px;margin-bottom:12px">Actual status transitions from the Jira changelog — showing most recent ${Math.min(reopenEvents.length, 50)}</div>
-        <table>
-          <thead><tr><th>Date</th><th>Key</th><th>Transition</th><th>Triggered By</th><th>Partner</th><th>Assignee</th><th>Status Now</th></tr></thead>
-          <tbody>${reopenEvents.slice(0, 50).map(ev => `<tr>
+        <h2>Recent External Reopens (Customer-Triggered)</h2>
+        <div style="font-size:12px;color:var(--gray-500);margin-top:-12px;margin-bottom:12px">Status transitions triggered by non-SteadyMD users — ${extEvents.length} total events, showing most recent ${Math.min(extEvents.length, 50)}</div>
+        ${extEvents.length === 0 ? '<div style="padding:16px;text-align:center;color:var(--gray-500)">No external reopen events found</div>' : `<table>
+          <thead><tr><th>Date</th><th>Key</th><th>Transition</th><th>Triggered By</th><th>Trigger Comment</th><th>Partner</th><th>Assignee</th></tr></thead>
+          <tbody>${extEvents.slice(0, 50).map(ev => {
+            const tc = ev.triggerComment;
+            const triggerInfo = tc ? `<span style="font-size:11px">${tc.author}${tc.email ? ' (' + tc.email.split('@')[1] + ')' : ''}</span>` : `<span style="font-size:11px;color:var(--gray-400)">${ev.author}${ev.authorEmail ? ' (' + ev.authorEmail.split('@')[1] + ')' : ''}</span>`;
+            return `<tr>
             <td style="white-space:nowrap;font-size:12px">${fmtDtTime(ev.date)}</td>
             <td class="mono"><a href="${ev.jiraUrl}" target="_blank">${ev.key}</a></td>
             <td><span style="color:#991b1b;font-size:12px">${ev.from}</span> → <span style="color:#0f766e;font-size:12px">${ev.to}</span></td>
             <td style="font-size:12px">${ev.author}</td>
+            <td>${tc ? `<span style="font-size:11px;color:#991b1b">${tc.author}</span> commented ${fmtDtTime(tc.date)}` : '<span style="font-size:11px;color:var(--gray-400)">No linked comment</span>'}</td>
             <td>${ev.partner || '—'}</td>
             <td>${ev.assignee || '—'}</td>
-            <td><span style="padding:2px 6px;border-radius:3px;font-size:11px;background:${ev.currentStatus==='Reopened'?'#fee2e2':'#f3f4f6'};color:${ev.currentStatus==='Reopened'?'#991b1b':'#374151'}">${ev.currentStatus}</span></td>
-          </tr>`).join('')}</tbody>
-        </table>
+          </tr>`}).join('')}</tbody>
+        </table>`}
       </div>
+
+      ${intEvents.length > 0 ? `<div class="section">
+        <div class="alert-card-header" onclick="document.getElementById('internal-reopens').classList.toggle('hidden')" style="cursor:pointer;padding:8px 0">
+          <h2 style="margin:0">Internal Reopens (Agent-Triggered) <span style="font-size:12px;color:var(--gray-500)">${intEvents.length} events</span></h2>
+          <span style="font-size:18px;color:var(--gray-400)">&#9662;</span>
+        </div>
+        <div id="internal-reopens" class="hidden">
+          <div style="font-size:12px;color:var(--gray-500);margin-bottom:8px">These were reopened by SteadyMD agents — not counted as true customer reopens</div>
+          <table>
+            <thead><tr><th>Date</th><th>Key</th><th>Transition</th><th>By</th><th>Partner</th></tr></thead>
+            <tbody>${intEvents.slice(0, 30).map(ev => `<tr>
+              <td style="white-space:nowrap;font-size:12px">${fmtDtTime(ev.date)}</td>
+              <td class="mono"><a href="${ev.jiraUrl}" target="_blank">${ev.key}</a></td>
+              <td style="font-size:12px"><span style="color:#991b1b">${ev.from}</span> → <span style="color:#0f766e">${ev.to}</span></td>
+              <td style="font-size:12px">${ev.author}</td>
+              <td>${ev.partner || '—'}</td>
+            </tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </div>` : ''}
 
       <div class="section">
         <h2>Recent Recontact Events</h2>
@@ -1132,15 +1158,18 @@ function renderContent() {
         </table>
       </div>`;
 
-    // Render trend charts
+    // Render trend charts — stacked: external (red) + internal (gray)
     if (reopenTrend.length > 0) {
       makeChart('chart-reopen-trend', {
         type: 'bar',
         data: {
           labels: reopenTrend.map(d => d.week.slice(5)),
-          datasets: [{ label: 'Reopens', data: reopenTrend.map(d => d.count), backgroundColor: '#ef4444', borderRadius: 3 }]
+          datasets: [
+            { label: 'External (Customer)', data: reopenTrend.map(d => d.external || 0), backgroundColor: '#ef4444', borderRadius: 3 },
+            { label: 'Internal (Agent)', data: reopenTrend.map(d => (d.total || 0) - (d.external || 0)), backgroundColor: '#d1d5db', borderRadius: 3 },
+          ]
         },
-        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
       });
     }
     if (recontactTrend.length > 0) {

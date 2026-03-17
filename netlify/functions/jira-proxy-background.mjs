@@ -42,9 +42,16 @@ function transformIssue(issue) {
 
   const comments = (f.comment?.comments || []).map(c => ({
     author: c.author?.displayName || 'Unknown',
+    email: c.author?.emailAddress || '',
     created: c.created,
     isInternal: c.jsdPublic === false || (c.visibility && c.visibility.type === 'role'),
   }));
+
+  const INTERNAL_DOMAINS = ['steadymd.com'];
+  const isExternalEmail = (email) => {
+    if (!email) return true; // no email = likely a portal customer
+    return !INTERNAL_DOMAINS.some(d => email.toLowerCase().endsWith('@' + d));
+  };
 
   const changelog = (issue.changelog?.histories || []);
   let reopenCount = 0;
@@ -56,19 +63,48 @@ function transformIssue(issue) {
         const fromLower = (item.fromString || '').toLowerCase();
         const toLower = (item.toString || '').toLowerCase();
         if (FINAL_STATUSES.includes(fromLower) && !FINAL_STATUSES.includes(toLower)) {
+          const transitionDate = new Date(history.created);
+          const transitionAuthorEmail = history.author?.emailAddress || '';
+          const transitionAuthorName = history.author?.displayName || 'System';
+
+          // Check if an external comment happened shortly before this transition (within 5 min)
+          // That means a non-SteadyMD person's comment triggered the reopen
+          const extCommentTrigger = comments.find(c => {
+            if (c.isInternal) return false;
+            if (!isExternalEmail(c.email)) return false;
+            const commentDate = new Date(c.created);
+            const diffMin = (transitionDate - commentDate) / 60000;
+            return diffMin >= 0 && diffMin <= 5;
+          });
+
+          // Determine if this is an external-triggered reopen:
+          // 1) An external comment happened just before the transition, OR
+          // 2) The transition author is not a SteadyMD domain user (e.g., automation on behalf of customer)
+          const isExternalTrigger = !!extCommentTrigger || isExternalEmail(transitionAuthorEmail);
+
           reopenCount++;
           reopenEvents.push({
             date: history.created,
-            author: history.author?.displayName || 'System',
+            author: transitionAuthorName,
+            authorEmail: transitionAuthorEmail,
             from: item.fromString,
             to: item.toString,
+            externalTrigger: isExternalTrigger,
+            triggerComment: extCommentTrigger ? {
+              author: extCommentTrigger.author,
+              email: extCommentTrigger.email,
+              date: extCommentTrigger.created,
+            } : null,
           });
         }
       }
     }
   }
 
-  const extComments = comments.filter(c => !c.isInternal).map(c => ({ dt: c.created, author: c.author }));
+  // Count only external-triggered reopens for the primary metric
+  const externalReopenCount = reopenEvents.filter(e => e.externalTrigger).length;
+
+  const extComments = comments.filter(c => !c.isInternal).map(c => ({ dt: c.created, author: c.author, email: c.email }));
   const labels = (f.labels || []);
   const components = (f.components || []).map(c => c.name || '');
   // FIXED: Partner comes ONLY from Jira Components — never from labels
@@ -86,7 +122,7 @@ function transformIssue(issue) {
     reporter: f.reporter?.displayName || 'Unknown',
     created: f.created,
     resolved: f.resolutiondate,
-    partner, labels, reopenCount, reopenEvents, extComments,
+    partner, labels, reopenCount, externalReopenCount, reopenEvents, extComments,
     jiraUrl: `https://${JIRA_DOMAIN}/browse/${key}`,
   };
 }
@@ -113,6 +149,7 @@ function computeMetrics(tickets) {
   }));
   // Tickets that were EVER reopened (for Reopens tab analysis)
   const everReopenedCount = tickets.filter(t => t.reopenCount > 0).length;
+  const everExternalReopenedCount = tickets.filter(t => t.externalReopenCount > 0).length;
 
   // Build detailed reopen event log from changelog (most recent 200 events)
   const allReopenEvents = [];
@@ -121,32 +158,42 @@ function computeMetrics(tickets) {
       allReopenEvents.push({
         key: t.key, partner: t.partner, assignee: t.assignee, labels: t.labels,
         currentStatus: t.status,
-        date: ev.date, author: ev.author, from: ev.from, to: ev.to,
+        date: ev.date, author: ev.author, authorEmail: ev.authorEmail || '',
+        from: ev.from, to: ev.to,
+        externalTrigger: ev.externalTrigger,
+        triggerComment: ev.triggerComment,
         jiraUrl: t.jiraUrl,
       });
     });
   });
   allReopenEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  // Reopen trend: count by week
-  const reopenByWeek = {};
+  const externalReopenEvents = allReopenEvents.filter(e => e.externalTrigger);
+  const internalReopenEvents = allReopenEvents.filter(e => !e.externalTrigger);
+
+  // Reopen trend: count by week (external only = primary, all = secondary)
+  const reopenByWeek = {}, extReopenByWeek = {};
   allReopenEvents.forEach(ev => {
     const d = new Date(ev.date);
     const weekStart = new Date(d); weekStart.setDate(d.getDate() - d.getDay());
     const wk = weekStart.toISOString().slice(0, 10);
     reopenByWeek[wk] = (reopenByWeek[wk] || 0) + 1;
+    if (ev.externalTrigger) extReopenByWeek[wk] = (extReopenByWeek[wk] || 0) + 1;
   });
-  const reopenTrend = Object.entries(reopenByWeek).sort((a,b) => a[0].localeCompare(b[0])).slice(-26)
-    .map(([week, count]) => ({ week, count }));
+  const allWeeks = [...new Set([...Object.keys(reopenByWeek), ...Object.keys(extReopenByWeek)])].sort().slice(-26);
+  const reopenTrend = allWeeks.map(week => ({ week, total: reopenByWeek[week] || 0, external: extReopenByWeek[week] || 0 }));
 
-  // Top reopened tickets (most reopen events)
-  const reopenCountByKey = {};
-  allReopenEvents.forEach(ev => { reopenCountByKey[ev.key] = (reopenCountByKey[ev.key] || 0) + 1; });
+  // Top reopened tickets (most external reopen events)
+  const reopenCountByKey = {}, extReopenCountByKey = {};
+  allReopenEvents.forEach(ev => {
+    reopenCountByKey[ev.key] = (reopenCountByKey[ev.key] || 0) + 1;
+    if (ev.externalTrigger) extReopenCountByKey[ev.key] = (extReopenCountByKey[ev.key] || 0) + 1;
+  });
   const topReopenedTickets = Object.entries(reopenCountByKey)
     .sort((a,b) => b[1] - a[1]).slice(0, 20)
     .map(([key, count]) => {
       const t = tickets.find(x => x.key === key);
-      return { key, count, partner: t?.partner || '', assignee: t?.assignee || '', status: t?.status || '', jiraUrl: t?.jiraUrl || '' };
+      return { key, total: count, external: extReopenCountByKey[key] || 0, partner: t?.partner || '', assignee: t?.assignee || '', status: t?.status || '', jiraUrl: t?.jiraUrl || '' };
     });
 
   const resolved = tickets.filter(t => t.resolved && t.created);
@@ -325,7 +372,9 @@ function computeMetrics(tickets) {
     cachedAt: now.toISOString(),
     summary: {
       totalTickets: total, totalRows: total, projectKeys: pkC, dateRange,
-      resolvedCount: resolved.length, openCount, reopenedSnapshot: reopenedTix.length, everReopenedCount,
+      resolvedCount: resolved.length, openCount, reopenedSnapshot: reopenedTix.length,
+      everReopenedCount, everExternalReopenedCount,
+      totalReopenEvents: allReopenEvents.length, externalReopenEvents: externalReopenEvents.length,
       medianCycleHrs: r1(medCT), p75CycleHrs: r1(p75CT), p90CycleHrs: r1(p90CT),
       bizHoursPct: r1(total>0?bizCount/total*100:0),
       recontact24hPct: rc24Pct, recontact72hPct: rc72Pct,
