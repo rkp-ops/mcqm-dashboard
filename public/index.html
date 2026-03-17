@@ -1254,24 +1254,30 @@ function buildDemandModel() {
   return model;
 }
 
+// Heatmap counts are RAW totals over ~90 days. Divide by this to get weekly average.
+const HEATMAP_WEEKS = 13;
+
+function avgDemandPerHour(demandModel, day, hour) {
+  if (!demandModel || !demandModel[day]) return 0;
+  return Math.round((demandModel[day][hour] || 0) / HEATMAP_WEEKS);
+}
+
 function calibrateCapacity(demandModel) {
-  if (!demandModel) return 3.0;
-  // Sum business hour demand across M-F
-  let totalDemand = 0;
-  let bizDays = 0;
+  if (!demandModel) return 8.0;
+  // Average tickets per staff per hour across M-F business hours
+  let totalWeeklyDemand = 0;
+  let bizHours = 0;
   ['Mon','Tue','Wed','Thu','Fri'].forEach(d => {
     for (let h = SCHED_COVERAGE.start; h < SCHED_COVERAGE.end; h++) {
-      totalDemand += demandModel[d][h] || 0;
+      totalWeeklyDemand += avgDemandPerHour(demandModel, d, h);
+      bizHours++;
     }
-    bizDays++;
   });
-  // Estimate from heatmap data (last 90 days): average per week-day
-  const weeksInData = 13; // ~90 days
-  const avgDailyDemand = totalDemand / (bizDays * weeksInData);
-  // Assume ~26 staff-hours per day (3 people, avg 8.7h each)
-  const staffHoursPerDay = 26;
-  const capacity = staffHoursPerDay > 0 ? avgDailyDemand / staffHoursPerDay : 3.0;
-  return Math.max(1.0, Math.round(capacity * 10) / 10);
+  // Average demand per hour, per staff member (assume avg 2 staff per hour)
+  const avgPerHour = bizHours > 0 ? totalWeeklyDemand / bizHours : 5;
+  // Capacity = how many tickets one person can handle per hour
+  // Use demand / avg_staff as a reasonable estimate
+  return Math.max(3.0, Math.round(avgPerHour / 2 * 10) / 10);
 }
 
 // ---- SCHEDULE GENERATOR ----
@@ -1491,23 +1497,23 @@ function analyzeGaps(weekSchedule, demandModel, capacity) {
 
     for (let h = SCHED_COVERAGE.start; h < SCHED_COVERAGE.end; h++) {
       const staffOn = shifts.filter(s => s.start <= h && s.end > h).length;
-      const demand = demandModel[day][h] || 0;
+      const avgDemand = avgDemandPerHour(demandModel, day, h); // weekly average, not raw 90-day total
       const cap = staffOn * capacity;
 
       if (isWeekend) {
         // Weekends: only flag if there's significant demand but no one on
-        if (staffOn === 0 && demand > 5) {
-          alerts.push({ severity: 'amber', day, hour: h, staffOn, demand,
-            msg: `${day} ${schedFmtShort(h)}-${schedFmtShort(h+1)}: No coverage (avg ${demand} tickets/hr)` });
+        if (staffOn === 0 && avgDemand > 3) {
+          alerts.push({ severity: 'amber', day, hour: h, staffOn, demand: avgDemand,
+            msg: `${day} ${schedFmtShort(h)}-${schedFmtShort(h+1)}: No coverage (avg ${avgDemand} tickets/hr)` });
         }
       } else {
         // M-F: 8a-8p MUST be fully covered — no exceptions
         if (staffOn === 0) {
-          alerts.push({ severity: 'red', day, hour: h, staffOn, demand,
-            msg: `${day} ${schedFmtShort(h)}-${schedFmtShort(h+1)}: No coverage (avg ${demand} tickets/hr)` });
-        } else if (demand > cap * 1.2 && staffOn > 0) {
-          alerts.push({ severity: 'amber', day, hour: h, staffOn, demand,
-            msg: `${day} ${schedFmtShort(h)}-${schedFmtShort(h+1)}: ${staffOn} staff for avg ${demand} tickets/hr — may need support` });
+          alerts.push({ severity: 'red', day, hour: h, staffOn, demand: avgDemand,
+            msg: `${day} ${schedFmtShort(h)}-${schedFmtShort(h+1)}: No coverage (avg ${avgDemand} tickets/hr)` });
+        } else if (avgDemand > cap * 1.2 && staffOn > 0) {
+          alerts.push({ severity: 'amber', day, hour: h, staffOn, demand: avgDemand,
+            msg: `${day} ${schedFmtShort(h)}-${schedFmtShort(h+1)}: ${staffOn} staff for avg ${avgDemand} tickets/hr — may need support` });
         }
       }
     }
@@ -1672,16 +1678,13 @@ function renderAlertCards(alerts, weekLabel) {
       </div>
       <div class="alert-card-body hidden">
         <table>
-          <thead><tr><th>Day</th><th>Hours</th><th class="text-right">Staff</th><th class="text-right">Avg Demand</th></tr></thead>
-          <tbody>${Object.entries(byDay).map(([day, items]) => {
-            const hourRange = items.map(a => schedFmtShort(a.hour)).join(', ');
-            const staffOn = items[0].staffOn;
-            const avgDemand = Math.round(items.reduce((s, a) => s + a.demand, 0) / items.length);
+          <thead><tr><th>Day</th><th>Hour</th><th class="text-right">Staff On</th><th class="text-right">Avg Demand</th></tr></thead>
+          <tbody>${amberAlerts.map(a => {
             return `<tr>
-              <td class="font-bold">${day}</td>
-              <td>${hourRange}</td>
-              <td class="text-right">${staffOn}</td>
-              <td class="text-right text-amber">${avgDemand}/hr</td>
+              <td class="font-bold">${a.day}</td>
+              <td>${schedFmtShort(a.hour)}-${schedFmtShort(a.hour+1)}</td>
+              <td class="text-right">${a.staffOn}</td>
+              <td class="text-right text-amber">${a.demand}/hr</td>
             </tr>`;
           }).join('')}</tbody>
         </table>
