@@ -156,7 +156,13 @@ export default async (req, context) => {
     return;
   }
 
+  const store = getStore('jira-cache');
+  const status = { startedAt: new Date().toISOString(), step: 'init', error: null, counts: {} };
+  const saveStatus = () => store.setJSON('bg-status', status).catch(() => {});
+
   try {
+    status.step = 'fetching';
+    await saveStatus();
     console.log('Background: Starting Jira fetch with changelog...');
     const fields = [
       'summary','status','priority','assignee','reporter','created','updated',
@@ -172,6 +178,7 @@ export default async (req, context) => {
         fields,
         expand: 'changelog',
       }).then(issues => {
+        status.counts[p] = issues.length;
         console.log(`Background: ${p} fetched ${issues.length} issues`);
         return issues;
       })
@@ -179,21 +186,33 @@ export default async (req, context) => {
 
     const results = await Promise.all(fetches);
     const allIssues = results.flat();
+    status.counts.total = allIssues.length;
+    status.step = 'transforming';
+    await saveStatus();
     console.log(`Background: Total ${allIssues.length} issues fetched`);
 
     const tickets = allIssues.map(issue => transformIssue(issue));
+    status.step = 'computing';
+    await saveStatus();
     const result = computeMetrics(tickets);
 
     // Store in Netlify Blobs:
     // - 'metrics' = pre-computed aggregates (fast read for unfiltered view)
     // - 'tickets-raw' = transformed ticket array (used by proxy for filtered views)
-    const store = getStore('jira-cache');
+    status.step = 'writing-blobs';
+    await saveStatus();
     await Promise.all([
       store.setJSON('metrics', result),
       store.setJSON('tickets-raw', { tickets, cachedAt: result.cachedAt }),
     ]);
+    status.step = 'done';
+    status.finishedAt = new Date().toISOString();
+    await saveStatus();
     console.log(`Background: Cached ${result.summary.totalTickets} tickets at ${result.cachedAt}`);
   } catch (err) {
+    status.error = { message: err.message, stack: err.stack?.split('\n').slice(0, 5).join('\n') };
+    status.failedAt = new Date().toISOString();
+    await saveStatus();
     console.error('Background Jira fetch error:', err.message);
   }
 };

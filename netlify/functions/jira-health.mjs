@@ -25,6 +25,8 @@ export default async (req) => {
     const tickets = await store.get('tickets-raw', { type: 'json' });
     result.blobStore.ticketsCachedAt = tickets?.cachedAt || null;
     result.blobStore.ticketsCount = tickets?.tickets?.length ?? null;
+    const bgStatus = await store.get('bg-status', { type: 'json' });
+    result.blobStore.bgStatus = bgStatus || null;
   } catch (e) {
     result.blobStore.error = e.message;
   }
