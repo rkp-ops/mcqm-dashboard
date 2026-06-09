@@ -742,6 +742,12 @@ async function applyFilter() {
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const json = await resp.json();
+    if (json.loading) {
+      // Tickets cache still being built — retry after a delay
+      status.innerHTML = '<span class="dot dot-amber"></span> Building filterable cache (1-2 min)...';
+      setTimeout(applyFilter, 15000);
+      return;
+    }
     DATA = json;
     renderContent();
     const filterLabels = { all:'All Time', mtd:'MTD', '7':'Last 7d', '30':'Last 30d', '90':'Last 90d', custom:'Custom' };
