@@ -25,19 +25,19 @@ export default async (req, context) => {
 
     const store = getStore('jira-cache');
 
-    // Force refresh: clear cache and trigger background rebuild
+    // Force refresh: trigger a background rebuild that OVERWRITES on success.
+    // We intentionally do NOT delete the existing cache first — if the trigger is
+    // blocked (e.g. site password protection intercepts the internal call), the
+    // existing data must survive rather than vanish. The background write swaps it
+    // atomically when it completes.
     if (forceRefresh) {
-      await Promise.all([
-        store.delete('metrics'),
-        store.delete('tickets-raw'),
-      ]);
       const bgUrl = new URL(req.url);
       bgUrl.pathname = '/.netlify/functions/jira-proxy-background';
       bgUrl.search = '';
       fetch(bgUrl.toString(), { method: 'POST' }).catch(() => {});
       return new Response(JSON.stringify({
         loading: true,
-        message: 'Cache cleared. Background refresh triggered. Reload in 1-2 minutes.',
+        message: 'Background refresh triggered. Existing data remains until the rebuild completes (1-2 min).',
       }), {
         status: 202,
         headers: corsHeaders(),
