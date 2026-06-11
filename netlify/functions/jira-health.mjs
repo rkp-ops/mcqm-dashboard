@@ -22,9 +22,10 @@ export default async (req) => {
     const store = getStore('jira-cache');
     const metrics = await store.get('metrics', { type: 'json' });
     result.blobStore.metricsCachedAt = metrics?.cachedAt || null;
-    const tickets = await store.get('tickets-raw', { type: 'json' });
-    result.blobStore.ticketsCachedAt = tickets?.cachedAt || null;
-    result.blobStore.ticketsCount = tickets?.tickets?.length ?? null;
+    const manifest = await store.get('tickets-manifest', { type: 'json' });
+    result.blobStore.ticketsCachedAt = manifest?.cachedAt || null;
+    result.blobStore.ticketsCount = manifest?.total ?? null;
+    result.blobStore.chunkCount = manifest?.chunkCount ?? null;
     const bgStatus = await store.get('bg-status', { type: 'json' });
     result.blobStore.bgStatus = bgStatus || null;
   } catch (e) {

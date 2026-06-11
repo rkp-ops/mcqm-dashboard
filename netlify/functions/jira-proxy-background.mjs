@@ -252,7 +252,8 @@ export default async (req, context) => {
     status.step = 'writing-tickets';
     await saveStatus();
     // Slim projection for the filterable cache — drop the heaviest fields the re-aggregation
-    // doesn't need (summary, reporter) so the blob serializes without OOM-killing the function.
+    // doesn't need (summary, reporter). Then write in small CHUNKS: serializing all 33k tickets
+    // in a single setJSON OOM-kills the function, so we split into ~4k-ticket blobs + a manifest.
     const slim = tickets.map(t => ({
       key: t.key, projectKey: t.projectKey, status: t.status, statusCategory: t.statusCategory,
       priority: t.priority, issueType: t.issueType, requestType: t.requestType,
@@ -262,10 +263,21 @@ export default async (req, context) => {
       firstResponseMins: t.firstResponseMins, statusMins: t.statusMins,
       extComments: t.extComments, jiraUrl: t.jiraUrl,
     }));
+    const CHUNK = 4000;
+    const chunkCount = Math.ceil(slim.length / CHUNK);
     status.slimCount = slim.length;
+    status.chunkCount = chunkCount;
     await saveStatus();
-    try { await store.setJSON('tickets-raw', { tickets: slim, cachedAt: result.cachedAt }); status.wroteTickets = true; }
-    catch (e) { status.wroteTickets = false; status.ticketsErr = e.message; }
+    try {
+      for (let ci = 0; ci < chunkCount; ci++) {
+        const part = slim.slice(ci * CHUNK, (ci + 1) * CHUNK);
+        await store.setJSON('traw-' + ci, { tickets: part });
+        status.chunksWritten = ci + 1;
+        await saveStatus();
+      }
+      await store.setJSON('tickets-manifest', { chunkCount, total: slim.length, cachedAt: result.cachedAt });
+      status.wroteTickets = true;
+    } catch (e) { status.wroteTickets = false; status.ticketsErr = e.message; }
 
     status.step = 'done';
     status.finishedAt = new Date().toISOString();

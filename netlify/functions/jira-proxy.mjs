@@ -44,11 +44,22 @@ export default async (req, context) => {
       });
     }
 
-    // FILTERED REQUEST: load raw tickets, filter, re-aggregate
+    // FILTERED REQUEST: load raw tickets (chunked), filter, re-aggregate
     if (isFiltered) {
-      const raw = await store.get('tickets-raw', { type: 'json' });
-      if (!raw || !raw.tickets) {
-        // Tickets blob not yet built — trigger background and tell client to wait
+      // Reassemble the filterable cache from chunks (written in small pieces to avoid OOM).
+      const manifest = await store.get('tickets-manifest', { type: 'json' });
+      let allTickets = null;
+      if (manifest && manifest.chunkCount) {
+        const parts = await Promise.all(
+          Array.from({ length: manifest.chunkCount }, (_, i) => store.get('traw-' + i, { type: 'json' }))
+        );
+        allTickets = parts.flatMap(p => (p && p.tickets) || []);
+      } else {
+        // Back-compat: single-blob cache from older builds
+        const raw = await store.get('tickets-raw', { type: 'json' });
+        if (raw && raw.tickets) allTickets = raw.tickets;
+      }
+      if (!allTickets || !allTickets.length) {
         const bgUrl = new URL(req.url);
         bgUrl.pathname = '/.netlify/functions/jira-proxy-background';
         bgUrl.search = '';
@@ -59,7 +70,7 @@ export default async (req, context) => {
         }), { status: 202, headers: corsHeaders() });
       }
 
-      const filtered = filterTickets(raw.tickets, { from, to, projects, partner, category });
+      const filtered = filterTickets(allTickets, { from, to, projects, partner, category });
       const result = computeMetrics(filtered, computeOpts);
       result.filtered = true;
       result.filterApplied = { from: from || null, to: to || null, projects: projects || null, partner: partner || null, category: category || null };
