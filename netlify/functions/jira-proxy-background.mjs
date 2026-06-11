@@ -234,16 +234,17 @@ export default async (req, context) => {
     // Store in Netlify Blobs:
     // - 'metrics' = pre-computed aggregates (fast read for unfiltered view)
     // - 'tickets-raw' = transformed ticket array (used by proxy for filtered views)
-    status.step = 'writing-blobs';
-    // Diagnostics: capture payload sizes + per-write outcome so we can see exactly what persists.
-    try { status.metricsBytes = JSON.stringify(result).length; } catch (e) { status.metricsBytes = -1; }
-    const rawPayload = { tickets, cachedAt: result.cachedAt };
-    try { status.ticketsBytes = JSON.stringify(rawPayload).length; } catch (e) { status.ticketsBytes = -1; }
+    // Write metrics FIRST and record success immediately, so the unfiltered dashboard
+    // survives even if the much larger tickets-raw write fails. No pre-stringify (avoids
+    // doubling peak memory, which can OOM-kill the function on the large payload).
+    status.step = 'writing-metrics';
+    status.ticketCount = tickets.length;
     await saveStatus();
-
     try { await store.setJSON('metrics', result); status.wroteMetrics = true; }
     catch (e) { status.wroteMetrics = false; status.metricsErr = e.message; }
-    try { await store.setJSON('tickets-raw', rawPayload); status.wroteTickets = true; }
+    status.step = 'writing-tickets';
+    await saveStatus();
+    try { await store.setJSON('tickets-raw', { tickets, cachedAt: result.cachedAt }); status.wroteTickets = true; }
     catch (e) { status.wroteTickets = false; status.ticketsErr = e.message; }
 
     status.step = 'done';
