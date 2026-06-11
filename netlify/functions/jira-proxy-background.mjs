@@ -142,12 +142,13 @@ function transformIssue(issue) {
   const firstResponseMins = (firstAgentReplyAt != null && createdMs != null)
     ? Math.round((firstAgentReplyAt - createdMs) / 60000) : null;
 
-  // First-entry timestamp into each workflow status (from changelog) — powers "our-side-complete" timing
-  // for whichever status Ops confirms represents hand-off to the clinical queue.
+  // First-entry timestamp into the hand-off candidate statuses (from changelog) — powers "our-side-complete"
+  // timing for whichever status Ops confirms. Limited to candidates to keep the cached blob small.
+  const OSC_CANDIDATES = ['Pending','In Progress','OpsNow Escalation','Waiting for support'];
   const statusFirstEntry = {};
   for (const history of sortedHistories) {
     for (const item of history.items || []) {
-      if (item.field === 'status' && item.toString) {
+      if (item.field === 'status' && item.toString && OSC_CANDIDATES.includes(item.toString)) {
         if (!statusFirstEntry[item.toString]) statusFirstEntry[item.toString] = history.created;
       }
     }
@@ -234,11 +235,17 @@ export default async (req, context) => {
     // - 'metrics' = pre-computed aggregates (fast read for unfiltered view)
     // - 'tickets-raw' = transformed ticket array (used by proxy for filtered views)
     status.step = 'writing-blobs';
+    // Diagnostics: capture payload sizes + per-write outcome so we can see exactly what persists.
+    try { status.metricsBytes = JSON.stringify(result).length; } catch (e) { status.metricsBytes = -1; }
+    const rawPayload = { tickets, cachedAt: result.cachedAt };
+    try { status.ticketsBytes = JSON.stringify(rawPayload).length; } catch (e) { status.ticketsBytes = -1; }
     await saveStatus();
-    await Promise.all([
-      store.setJSON('metrics', result),
-      store.setJSON('tickets-raw', { tickets, cachedAt: result.cachedAt }),
-    ]);
+
+    try { await store.setJSON('metrics', result); status.wroteMetrics = true; }
+    catch (e) { status.wroteMetrics = false; status.metricsErr = e.message; }
+    try { await store.setJSON('tickets-raw', rawPayload); status.wroteTickets = true; }
+    catch (e) { status.wroteTickets = false; status.ticketsErr = e.message; }
+
     status.step = 'done';
     status.finishedAt = new Date().toISOString();
     await saveStatus();
