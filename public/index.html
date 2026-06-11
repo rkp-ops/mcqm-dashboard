@@ -184,7 +184,96 @@
   .sched-popover select { padding: 4px 8px; border-radius: 4px; border: 1px solid var(--gray-200); font-size: 12px; }
   .sched-popover label { font-size: 11px; color: var(--gray-500); font-weight: 600; display: block; margin-bottom: 2px; }
   .sched-off-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 11px; color: var(--gray-400); font-style: italic; }
+
+  /* ============ PARTNER PERFORMANCE SNAPSHOT ============ */
+  .pps { --navy:#173360; --navy2:#0F2C5A; --pteal:#0E7C8C; --pteal2:#26AEBC; --ptealL:#4FC3D1;
+    --pink:#1b2a41; --pmuted:#5b6b80; --pline:#e3e9f0; --pbg:#f7f9fc;
+    font-family:'Lora', Georgia, 'Times New Roman', serif; color:var(--navy); }
+  .pps * { font-family:inherit; }
+  .pps-controls { display:flex; flex-wrap:wrap; gap:14px 22px; align-items:flex-end; padding:14px 18px; background:#fff;
+    border:1px solid var(--pline); border-radius:10px; margin-bottom:22px; }
+  .pps-ctrl-group { display:flex; flex-direction:column; gap:5px; }
+  .pps-ctrl-label { font-size:10px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:var(--pmuted); }
+  .pps-pills { display:flex; gap:4px; flex-wrap:wrap; }
+  .pps-pill { padding:5px 12px; border-radius:6px; font-size:12.5px; font-weight:600; cursor:pointer; border:1px solid var(--pline);
+    background:#fff; color:var(--navy); transition:all .12s; }
+  .pps-pill:hover { border-color:var(--pteal2); }
+  .pps-pill.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+  .pps-select { padding:6px 10px; border:1px solid var(--pline); border-radius:6px; font-size:13px; background:#fff; color:var(--navy); min-width:190px; }
+  .pps-date { padding:5px 8px; border:1px solid var(--pline); border-radius:6px; font-size:12.5px; color:var(--navy); }
+  .pps-present-btn { padding:6px 14px; border-radius:6px; font-size:12.5px; font-weight:700; cursor:pointer;
+    background:var(--pteal); color:#fff; border:1px solid var(--pteal); }
+  .pps-present-btn:hover { background:var(--navy); border-color:var(--navy); }
+
+  .pps-hero-title { font-size:22px; font-weight:700; color:var(--navy); margin:4px 0 2px; }
+  .pps-hero-sub { font-size:13px; color:var(--pmuted); margin-bottom:20px; }
+  .pps-scorecard { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:14px; margin-bottom:26px; }
+  .pps-card { background:#fff; border:1px solid var(--pline); border-radius:12px; padding:18px 18px 14px;
+    border-top:3px solid var(--pteal); display:flex; flex-direction:column; min-height:118px; }
+  .pps-card.navytop { border-top-color:var(--navy); }
+  .pps-card.tealtop { border-top-color:var(--pteal2); }
+  .pps-card .lbl { font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--pmuted); }
+  .pps-card .val { font-size:30px; font-weight:700; color:var(--navy); margin-top:8px; line-height:1.05; }
+  .pps-card .val small { font-size:15px; font-weight:600; color:var(--pmuted); }
+  .pps-card .meta { font-size:12px; color:var(--pink); margin-top:6px; }
+  .pps-card .prov { font-size:10.5px; color:var(--pmuted); margin-top:auto; padding-top:8px; font-style:italic; }
+  .pps-card.empty { border-top-color:var(--pline); background:var(--pbg); }
+  .pps-card.empty .val { font-size:15px; color:var(--pmuted); font-style:italic; font-weight:600; }
+
+  .pps-section { background:#fff; border:1px solid var(--pline); border-radius:12px; padding:20px 22px; margin-bottom:22px; }
+  .pps-section h3 { font-size:15.5px; font-weight:700; color:var(--navy); margin-bottom:3px; }
+  .pps-section .prov { font-size:11px; color:var(--pmuted); font-style:italic; margin-bottom:14px; }
+  .pps-section .note { font-size:11.5px; color:var(--pmuted); margin-top:10px; }
+  .pps-chart-wrap { position:relative; width:100%; }
+  .pps-two { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+  @media (max-width:900px){ .pps-two { grid-template-columns:1fr; } }
+
+  .pps-empty { background:var(--pbg); border:1px dashed var(--ptealL); border-radius:10px; padding:22px; text-align:center; color:var(--pmuted); }
+  .pps-empty .big { font-size:14px; font-weight:700; color:var(--navy); }
+  .pps-empty .small { font-size:12px; margin-top:5px; }
+
+  .pps-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .pps-table th { text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.5px; color:var(--pmuted);
+    border-bottom:2px solid var(--pline); padding:7px 8px; font-weight:700; }
+  .pps-table td { padding:7px 8px; border-bottom:1px solid var(--pline); color:var(--pink); }
+  .pps-table td.num { text-align:right; font-variant-numeric:tabular-nums; }
+
+  .pps-sls { display:grid; grid-template-columns:1.15fr 1fr; gap:0; border:1px solid var(--navy); border-radius:12px; overflow:hidden; }
+  @media (max-width:900px){ .pps-sls { grid-template-columns:1fr; } }
+  .pps-sls-left { background:var(--navy); color:#fff; padding:20px 22px; }
+  .pps-sls-left h4, .pps-sls-right h4 { font-size:14px; font-weight:700; margin-bottom:12px; }
+  .pps-sls-left h4 { color:#fff; }
+  .pps-sls-right { padding:20px 22px; background:#fff; }
+  .pps-sls-right h4 { color:var(--navy); }
+  .pps-sls-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  .pps-sls-table th { text-align:left; color:var(--ptealL); font-size:10px; text-transform:uppercase; letter-spacing:.5px; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.2); }
+  .pps-sls-table td { padding:7px 8px; border-bottom:1px solid rgba(255,255,255,.12); color:#eaf2f8; }
+  .pps-sls-table td.tier { font-weight:700; color:#fff; }
+  .pps-perf-row { display:flex; justify-content:space-between; align-items:baseline; padding:10px 0; border-bottom:1px solid var(--pline); }
+  .pps-perf-row:last-child { border-bottom:none; }
+  .pps-perf-row .pl { font-size:12.5px; color:var(--pink); }
+  .pps-perf-row .pv { font-size:18px; font-weight:700; color:var(--navy); }
+  .pps-perf-row .pp { font-size:10px; color:var(--pmuted); font-style:italic; display:block; }
+  .pps-badge-real { display:inline-block; font-size:9px; font-weight:700; letter-spacing:.5px; text-transform:uppercase;
+    background:#e6f7f4; color:var(--pteal); padding:2px 6px; border-radius:4px; margin-left:6px; }
+  .pps-badge-stub { background:#fdecee; color:#b4434f; }
+
+  .pps-lifecycle { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:10px; }
+  .pps-lc { border:1px solid var(--pline); border-radius:9px; padding:12px 14px; background:#fff; }
+  .pps-lc .nm { font-size:13px; font-weight:700; color:var(--navy); }
+  .pps-lc .cat { font-size:10px; text-transform:uppercase; letter-spacing:.5px; margin-top:3px; }
+  .pps-lc .df { font-size:11.5px; color:var(--pmuted); margin-top:6px; font-style:italic; }
+
+  /* Presentation mode — strip app chrome */
+  body.pps-present .header,
+  body.pps-present #filter-bar { display:none !important; }
+  body.pps-present .main { max-width:none; padding:18px 30px 40px; }
+  body.pps-present .pps-present-only { display:flex !important; }
+  .pps-present-only { display:none; }
+  .pps-exit { position:fixed; top:14px; right:18px; z-index:50; padding:7px 14px; border-radius:8px;
+    background:var(--navy); color:#fff; border:none; font-family:'Lora',serif; font-size:12.5px; font-weight:700; cursor:pointer; box-shadow:0 2px 10px rgba(23,51,96,.25); }
 </style>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
@@ -246,6 +335,7 @@ const CONFIG = {
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
+  { id: 'snapshot', label: '★ Partner Snapshot' },
   { id: 'demand', label: 'Demand & Arrivals' },
   { id: 'partners', label: 'Labels & Volume' },
   { id: 'cycle', label: 'Cycle Time' },
@@ -321,6 +411,8 @@ function renderTabs() {
 function switchTab(id) {
   currentTab = id;
   renderTabs();
+  const fb = document.getElementById('filter-bar');
+  if (fb) fb.style.display = (id === 'snapshot') ? 'none' : (DATA ? 'flex' : 'none');
   renderContent();
 }
 
@@ -820,6 +912,188 @@ function updateStatusAndBadges(filterLabel) {
     </div>`;
 }
 
+// ============ PARTNER PERFORMANCE SNAPSHOT ============
+const PPS = {
+  partner: '', preset: '90', from: '', to: '',
+  projects: new Set(ALL_PROJECTS),
+  data: null, loading: false, error: null, partnerList: [],
+};
+
+function ppsRange() {
+  const now = new Date(); const iso = d => d.toISOString().slice(0,10);
+  switch (PPS.preset) {
+    case '7': case '30': case '90': { const days=+PPS.preset; return { from: iso(new Date(now-days*864e5)), to: iso(now) }; }
+    case 'q': return { from: iso(new Date(now-90*864e5)), to: iso(now) };
+    case 'mtd': return { from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to: iso(now) };
+    case 'custom': return { from: PPS.from || null, to: PPS.to || null };
+    case 'all': default: return { from: '2022-01-01', to: iso(now) };
+  }
+}
+function ppsRangeLabel() {
+  if (PPS.preset === 'all') return 'all time';
+  const { from, to } = ppsRange(); if (!from || !to) return 'all time';
+  const o = { month:'short', day:'numeric', year:'numeric' };
+  return `${new Date(from+'T00:00:00').toLocaleDateString('en-US',o)} – ${new Date(to+'T00:00:00').toLocaleDateString('en-US',o)}`;
+}
+function ppsProjLabel() { return PPS.projects.size === ALL_PROJECTS.length ? 'PSS·MCQM·FHPS·OAC' : [...PPS.projects].join('·'); }
+function ppsProv(extra) { return `Source: ${ppsProjLabel()} Jira${PPS.partner ? ' · '+PPS.partner : ''} · ${ppsRangeLabel()}${extra ? ' · '+extra : ''}`; }
+function ppsFmtMins(m){ if(m==null) return '—'; if(m<60) return Math.round(m)+'m'; const h=m/60; return h<48 ? (Math.round(h*10)/10)+'h' : (Math.round(h/24*10)/10)+'d'; }
+function ppsFmtHrs(h){ if(h==null) return '—'; if(h<1) return Math.round(h*60)+'m'; return h<48 ? (Math.round(h*10)/10)+'h' : (Math.round(h/24*10)/10)+'d'; }
+
+async function ppsFetch() {
+  PPS.loading = true; PPS.error = null; renderSnapshot();
+  const { from, to } = ppsRange();
+  const q = ['osc=Pending','resBizDays=2'];
+  if (from) q.push('from='+from);
+  if (to) q.push('to='+to);
+  if (PPS.projects.size < ALL_PROJECTS.length) q.push('projects='+[...PPS.projects].join(','));
+  if (PPS.partner) q.push('partner='+encodeURIComponent(PPS.partner));
+  try {
+    const resp = await fetch(CONFIG.FETCH_URL + '?' + q.join('&'));
+    const json = await resp.json();
+    if (json.loading) { setTimeout(() => { if (currentTab==='snapshot') ppsFetch(); }, 15000); return; }
+    PPS.data = json; PPS.loading = false;
+    if (!PPS.partnerList.length) {
+      const src = (ALL_TIME_DATA && ALL_TIME_DATA.partnerVolume) || json.partnerVolume || [];
+      PPS.partnerList = src.map(p => p.partner);
+    }
+    if (currentTab === 'snapshot') renderSnapshot();
+  } catch (e) { PPS.loading = false; PPS.error = e.message; if (currentTab === 'snapshot') renderSnapshot(); }
+}
+
+function ppsSetPreset(p){ PPS.preset=p; if(p!=='custom') ppsFetch(); else renderSnapshot(); }
+function ppsSetCustom(){ PPS.from=document.getElementById('pps-from').value; PPS.to=document.getElementById('pps-to').value; if(PPS.from&&PPS.to){ PPS.preset='custom'; ppsFetch(); } }
+function ppsSetPartner(v){ PPS.partner=v; ppsFetch(); }
+function ppsToggleProj(p){ if(PPS.projects.has(p)){ if(PPS.projects.size===1) return; PPS.projects.delete(p);} else PPS.projects.add(p); ppsFetch(); }
+function ppsTogglePresent(){ document.body.classList.toggle('pps-present'); }
+
+function ppsControlsHtml(){
+  const presets = [['7','7d'],['30','30d'],['90','90d'],['q','Last quarter'],['mtd','MTD'],['all','All time'],['custom','Custom']];
+  const opts = ['<option value="">All partners (aggregate)</option>']
+    .concat(PPS.partnerList.map(p=>`<option value="${p}" ${PPS.partner===p?'selected':''}>${p}</option>`)).join('');
+  return `<div class="pps-controls">
+    <div class="pps-ctrl-group"><span class="pps-ctrl-label">Partner</span><select class="pps-select" onchange="ppsSetPartner(this.value)">${opts}</select></div>
+    <div class="pps-ctrl-group"><span class="pps-ctrl-label">Date range</span><div class="pps-pills">${presets.map(([v,l])=>`<button class="pps-pill ${PPS.preset===v?'active':''}" onclick="ppsSetPreset('${v}')">${l}</button>`).join('')}</div></div>
+    ${PPS.preset==='custom'?`<div class="pps-ctrl-group"><span class="pps-ctrl-label">Custom</span><div style="display:flex;gap:6px;align-items:center"><input type="date" id="pps-from" class="pps-date" value="${PPS.from}"><span style="color:var(--pmuted)">–</span><input type="date" id="pps-to" class="pps-date" value="${PPS.to}"><button class="pps-pill" onclick="ppsSetCustom()">Apply</button></div></div>`:''}
+    <div class="pps-ctrl-group"><span class="pps-ctrl-label">Lane (project)</span><div class="pps-pills">${ALL_PROJECTS.map(p=>`<button class="pps-pill ${PPS.projects.has(p)?'active':''}" onclick="ppsToggleProj('${p}')">${p}</button>`).join('')}</div></div>
+    <div class="pps-ctrl-group" style="margin-left:auto"><span class="pps-ctrl-label">&nbsp;</span><button class="pps-present-btn" onclick="ppsTogglePresent()">⤢ Presentation mode</button></div>
+  </div>`;
+}
+
+function ppsScorecardHtml(s, snap){
+  const fr=snap.firstResponse||{}, osc=snap.ourSideComplete||{}, rs=snap.resolutionSla||{};
+  const card=(cls,lbl,val,meta,prov)=>`<div class="pps-card ${cls}"><div class="lbl">${lbl}</div><div class="val">${val}</div>${meta?`<div class="meta">${meta}</div>`:''}<div class="prov">${prov}</div></div>`;
+  const empty=(lbl)=>`<div class="pps-card empty"><div class="lbl">${lbl}</div><div class="val">Data not yet available</div></div>`;
+  const c=[];
+  c.push(card('navytop','Total volume',(s.totalTickets||0).toLocaleString(),'tickets created in range',ppsProv()));
+  c.push(card('','Median time to resolved',ppsFmtHrs(s.medianCycleHrs),`p75 ${ppsFmtHrs(s.p75CycleHrs)} · fast auto-resolve tail`,ppsProv('resolved − created')));
+  c.push(card('tealtop','Reopen rate',(snap.reopenRatePct!=null?snap.reopenRatePct+'%':'—'),`${(s.everReopenedCount||0).toLocaleString()} of ${(s.resolvedCount||0).toLocaleString()} resolved`,ppsProv('reopened after Resolved')));
+  c.push(card('','Resolved ≤ 2 biz days',(rs.withinTargetPct!=null?rs.withinTargetPct+'%':'—'),`lenient clinical target · ${(rs.resolvedCount||0).toLocaleString()} resolved`,ppsProv()));
+  c.push(fr.measuredCount>0?card('tealtop','Median first response',ppsFmtMins(fr.medianMins),`on ${fr.coveragePct}% w/ an agent reply`,ppsProv('first public agent reply − created')):empty('Median first response'));
+  c.push(osc.measuredCount>0?card('navytop','Our-side-complete (→ Pending)',ppsFmtMins(osc.medianMins),`time to clinical hand-off · ${osc.coveragePct}% of tickets`,ppsProv('first entry to “Pending”')):empty('Our-side-complete (→ Pending)'));
+  return `<div class="pps-scorecard">${c.join('')}</div>`;
+}
+
+function ppsVolumeHtml(){ return `<div class="pps-section"><h3>Volume over time</h3><div class="prov">${ppsProv('tickets by created date')}</div><div class="pps-chart-wrap" style="height:240px"><canvas id="pps-vol"></canvas></div></div>`; }
+
+function ppsCategoryHtml(snap){
+  const cats=snap.categoryVolume||[];
+  if(!snap.categoryAvailable || !cats.length) return `<div class="pps-section"><h3>Volume by category</h3><div class="pps-empty"><div class="big">Data not yet available</div><div class="small">Request Type not present on tickets in this range.</div></div></div>`;
+  const resMap={}; (snap.categoryResolution||[]).forEach(r=>resMap[r.category]=r);
+  const rows=cats.slice(0,12).map(x=>{const r=resMap[x.category]||{}; return `<tr><td>${x.category}</td><td class="num">${x.tickets.toLocaleString()}</td><td class="num">${r.medianHrs!=null?ppsFmtHrs(r.medianHrs):'—'}</td><td class="num">${r.p75Hrs!=null?ppsFmtHrs(r.p75Hrs):'—'}</td></tr>`;}).join('');
+  return `<div class="pps-section"><h3>Volume by category <span class="pps-badge-real">live</span></h3><div class="prov">${ppsProv(`Request Type · ${snap.categoryCoveragePct}% of tickets carry a category`)}</div>
+    <div class="pps-two"><div class="pps-chart-wrap" style="height:300px"><canvas id="pps-cat"></canvas></div>
+    <div><table class="pps-table"><thead><tr><th>Category</th><th class="num">Volume</th><th class="num">Median res</th><th class="num">p75 res</th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
+}
+
+function ppsSpeedHtml(d, snap){
+  const fr=snap.firstResponse||{}; const has=fr.measuredCount>0;
+  return `<div class="pps-section"><h3>Speed &amp; resolution</h3><div class="prov">${ppsProv()}</div><div class="pps-two">
+    <div><div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">Time to resolved — distribution</div><div class="pps-chart-wrap" style="height:220px"><canvas id="pps-resdist"></canvas></div><div class="note">Median ${ppsFmtHrs(d.summary.medianCycleHrs)} · large &lt;30m bar reflects fast auto-resolves. Target line awaiting configured SLA.</div></div>
+    <div><div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">First response — distribution</div>${has?`<div class="pps-chart-wrap" style="height:220px"><canvas id="pps-frdist"></canvas></div><div class="note">Measured on ${fr.coveragePct}% of tickets that received a public agent reply. Target awaiting configured SLA.</div>`:`<div class="pps-empty"><div class="big">Data not yet available</div><div class="small">No agent-reply timing in this range.</div></div>`}</div>
+  </div></div>`;
+}
+
+function ppsReliabilityHtml(snap, d){
+  const has=(d.reopenTrend||[]).length>0;
+  return `<div class="pps-section"><h3>Reliability — reopens</h3><div class="prov">${ppsProv('reopen = transition out of a resolved/closed status after resolution')}</div><div class="pps-two">
+    <div><div class="pps-card tealtop" style="min-height:auto"><div class="lbl">Reopen rate</div><div class="val">${snap.reopenRatePct!=null?snap.reopenRatePct+'%':'—'}</div><div class="meta">${(d.summary.everReopenedCount||0).toLocaleString()} of ${(d.summary.resolvedCount||0).toLocaleString()} resolved reopened</div></div></div>
+    <div><div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">Reopen events per week</div>${has?`<div class="pps-chart-wrap" style="height:180px"><canvas id="pps-reopen"></canvas></div>`:`<div class="pps-empty"><div class="small">No reopen events in range.</div></div>`}</div>
+  </div></div>`;
+}
+
+function ppsPartnerLaneHtml(d, snap){
+  const pv=d.partnerVolume||[], lv=snap.laneVolume||[];
+  return `<div class="pps-section"><h3>Distribution by partner &amp; lane</h3><div class="prov">${ppsProv(`${snap.partnerCoveragePct}% of tickets carry a partner; the rest unattributed`)}</div><div class="pps-two">
+    <div><div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">By partner <span style="font-weight:400;color:var(--pmuted)">(secondary — ${snap.partnerCoveragePct}% attributed)</span></div>${pv.length?`<div class="pps-chart-wrap" style="height:300px"><canvas id="pps-partner"></canvas></div>`:`<div class="pps-empty"><div class="small">No partner-attributed tickets in range.</div></div>`}</div>
+    <div><div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">By lane (project)</div>${lv.length?`<div class="pps-chart-wrap" style="height:240px"><canvas id="pps-lane"></canvas></div>`:`<div class="pps-empty"><div class="small">No data.</div></div>`}</div>
+  </div></div>`;
+}
+
+function ppsSlsPanelHtml(s, snap){
+  const rs=snap.resolutionSla||{}, osc=snap.ourSideComplete||{};
+  const tierRows=['Urgent','VIP','High','Standard'].map(t=>`<tr><td class="tier">${t}</td><td>—</td><td>—</td><td>—</td></tr>`).join('');
+  const perf=(lbl,val,prov)=>`<div class="pps-perf-row"><div><div class="pl">${lbl}</div><span class="pp">${prov}</span></div><div class="pv">${val}</div></div>`;
+  return `<div class="pps-section"><h3>Service Level Standards</h3><div class="prov">Left: configured policy targets. Right: live performance from real data.</div>
+    <div class="pps-sls">
+      <div class="pps-sls-left"><h4>SLA Targets <span class="pps-badge-real pps-badge-stub">awaiting config</span></h4>
+        <table class="pps-sls-table"><thead><tr><th>Tier</th><th>First response</th><th>Our-side-complete</th><th>Escalation</th></tr></thead><tbody>${tierRows}</tbody></table>
+        <div style="font-size:11px;color:var(--ptealL);margin-top:12px;font-style:italic">Targets not yet configured. Provide the Service Level Standards values to populate — no numbers are invented.</div></div>
+      <div class="pps-sls-right"><h4>Live Performance</h4>
+        ${perf('Total volume',(s.totalTickets||0).toLocaleString(),ppsProv())}
+        ${perf('Median time to resolved',ppsFmtHrs(s.medianCycleHrs),'resolved − created')}
+        ${perf('Reopen rate',(snap.reopenRatePct!=null?snap.reopenRatePct+'%':'—'),'reopened after Resolved')}
+        ${perf('Resolution-fix SLA (≤2 biz days) <span class="pps-badge-real">live</span>',(rs.withinTargetPct!=null?rs.withinTargetPct+'%':'—'),'lenient · resolved within 2 business days')}
+        ${perf('Our-side-complete (→ Pending) '+(osc.measuredCount>0?'<span class="pps-badge-real">live</span>':'<span class="pps-badge-real pps-badge-stub">no target</span>'),(osc.measuredCount>0?ppsFmtMins(osc.medianMins)+' median':'—'),'tight · time to clinical hand-off (compliance awaiting target)')}
+      </div>
+    </div></div>`;
+}
+
+function ppsLifecycleHtml(snap){
+  const vocab=snap.statusVocabulary||[];
+  const cards=vocab.map(st=>`<div class="pps-lc"><div class="nm">${st}</div><div class="df">Definition awaiting configured lifecycle content.</div></div>`).join('');
+  return `<div class="pps-section"><h3>Ticket Lifecycle</h3><div class="prov">Status names are live from the real workflow; definitions &amp; routing are configured content (awaiting reference legend).</div>${vocab.length?`<div class="pps-lifecycle">${cards}</div>`:`<div class="pps-empty"><div class="small">No status data.</div></div>`}</div>`;
+}
+
+function ppsRenderCharts(d, snap){
+  const NAVY='#173360', TEAL='#0E7C8C', TEAL2='#26AEBC', TEALL='#4FC3D1', GRID='#e3e9f0';
+  const base=(extra)=>Object.assign({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{family:'Lora',size:10},color:'#5b6b80'}},y:{beginAtZero:true,grid:{color:GRID},ticks:{font:{family:'Lora',size:10},color:'#5b6b80'}}}},extra||{});
+  const vol=(d.monthlyVolume&&d.monthlyVolume.length>=2)?d.monthlyVolume.map(m=>({x:m.month,y:m.tickets})):(d.dailyVolume||[]).map(x=>({x:x.date,y:x.tickets}));
+  if(document.getElementById('pps-vol')&&vol.length) makeChart('pps-vol',{type:'line',data:{labels:vol.map(v=>v.x),datasets:[{data:vol.map(v=>v.y),borderColor:TEAL,backgroundColor:'rgba(14,124,140,.12)',fill:true,tension:.3,pointRadius:0,borderWidth:2}]},options:base()});
+  if(document.getElementById('pps-cat')&&(snap.categoryVolume||[]).length){const c=snap.categoryVolume.slice(0,10);makeChart('pps-cat',{type:'bar',data:{labels:c.map(x=>x.category),datasets:[{data:c.map(x=>x.tickets),backgroundColor:NAVY,borderRadius:4}]},options:base({indexAxis:'y'})});}
+  if(document.getElementById('pps-resdist')&&(d.cycleTimeDist||[]).length) makeChart('pps-resdist',{type:'bar',data:{labels:d.cycleTimeDist.map(b=>b.bucket),datasets:[{data:d.cycleTimeDist.map(b=>b.tickets),backgroundColor:TEAL2,borderRadius:3}]},options:base()});
+  if(document.getElementById('pps-frdist')&&snap.firstResponse&&snap.firstResponse.dist) makeChart('pps-frdist',{type:'bar',data:{labels:snap.firstResponse.dist.map(b=>b.bucket),datasets:[{data:snap.firstResponse.dist.map(b=>b.tickets),backgroundColor:TEAL,borderRadius:3}]},options:base()});
+  if(document.getElementById('pps-reopen')&&(d.reopenTrend||[]).length){const r=d.reopenTrend;makeChart('pps-reopen',{type:'line',data:{labels:r.map(x=>x.week),datasets:[{data:r.map(x=>x.total),borderColor:'#b4434f',backgroundColor:'rgba(180,67,79,.1)',fill:true,tension:.3,pointRadius:0,borderWidth:2}]},options:base()});}
+  if(document.getElementById('pps-partner')&&(d.partnerVolume||[]).length){const p=d.partnerVolume.slice(0,10);makeChart('pps-partner',{type:'bar',data:{labels:p.map(x=>x.partner),datasets:[{data:p.map(x=>x.tickets),backgroundColor:TEAL,borderRadius:4}]},options:base({indexAxis:'y'})});}
+  if(document.getElementById('pps-lane')&&(snap.laneVolume||[]).length){const l=snap.laneVolume;makeChart('pps-lane',{type:'bar',data:{labels:l.map(x=>x.label),datasets:[{data:l.map(x=>x.tickets),backgroundColor:[NAVY,TEAL,TEAL2,TEALL]}]},options:base()});}
+}
+
+function renderSnapshot(){
+  destroyCharts();
+  const el = document.getElementById('main-content');
+  const fb = document.getElementById('filter-bar'); if (fb) fb.style.display='none';
+  const controls = ppsControlsHtml();
+  if (PPS.loading && !PPS.data) { el.innerHTML = `<div class="pps">${controls}<div class="pps-section" style="text-align:center;padding:50px"><div class="spinner"></div><p style="color:var(--pmuted);margin-top:14px">Loading real data from Jira…</p></div></div>`; return; }
+  if (PPS.error && !PPS.data) { el.innerHTML = `<div class="pps">${controls}<div class="pps-empty"><div class="big">Could not load data</div><div class="small">${PPS.error}</div></div></div>`; return; }
+  if (!PPS.data) { el.innerHTML = `<div class="pps">${controls}<div class="pps-section" style="text-align:center;padding:50px;color:var(--pmuted)">Loading…</div></div>`; ppsFetch(); return; }
+  const d = PPS.data, s = d.summary || {}, snap = d.snapshot || {};
+  el.innerHTML = `<div class="pps">
+    <button class="pps-exit pps-present-only" onclick="ppsTogglePresent()">⤢ Exit presentation</button>
+    ${controls}
+    <div class="pps-hero-title">Support Operations Snapshot</div>
+    <div class="pps-hero-sub">${ppsProv()}</div>
+    ${ppsScorecardHtml(s, snap)}
+    ${ppsVolumeHtml()}
+    ${ppsCategoryHtml(snap)}
+    ${ppsSpeedHtml(d, snap)}
+    ${ppsReliabilityHtml(snap, d)}
+    ${ppsPartnerLaneHtml(d, snap)}
+    ${ppsSlsPanelHtml(s, snap)}
+    ${ppsLifecycleHtml(snap)}
+  </div>`;
+  ppsRenderCharts(d, snap);
+}
+
 // ---- CHART HELPERS ----
 function destroyCharts() {
   Object.values(chartInstances).forEach(c => c.destroy());
@@ -834,6 +1108,12 @@ function makeChart(canvasId, config) {
 
 // ---- RENDERING ----
 function renderContent() {
+  // Partner Snapshot manages its own filtered fetch — handle before DATA guard
+  if (currentTab === 'snapshot') {
+    destroyCharts();
+    renderSnapshot();
+    return;
+  }
   // Schedule tab works independently — handle before DATA guard
   if (currentTab === 'schedule') {
     destroyCharts();
