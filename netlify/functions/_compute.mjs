@@ -298,9 +298,8 @@ export function computeMetrics(tickets, opts = {}) {
   let ourSideComplete = null;
   if (oscStatus) {
     const oscMins = tickets.map(t => {
-      const at = t.statusFirstEntry && t.statusFirstEntry[oscStatus];
-      if (!at || !t.created) return null;
-      return (new Date(at) - new Date(t.created)) / 60000;
+      const m = t.statusMins ? t.statusMins[oscStatus] : null;
+      return (typeof m === 'number' && m >= 0) ? m : null;
     }).filter(v => typeof v === 'number' && v >= 0);
     const oscTarget = opts.ourSideCompleteTargetMins != null ? Number(opts.ourSideCompleteTargetMins) : null;
     ourSideComplete = {

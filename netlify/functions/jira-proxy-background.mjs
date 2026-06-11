@@ -142,8 +142,8 @@ function transformIssue(issue) {
   const firstResponseMins = (firstAgentReplyAt != null && createdMs != null)
     ? Math.round((firstAgentReplyAt - createdMs) / 60000) : null;
 
-  // First-entry timestamp into the hand-off candidate statuses (from changelog) — powers "our-side-complete"
-  // timing for whichever status Ops confirms. Limited to candidates to keep the cached blob small.
+  // Minutes-from-created to first entry into each hand-off candidate status (from changelog) —
+  // powers "our-side-complete" timing. Stored as compact numbers (not ISO strings) to keep the blob small.
   const OSC_CANDIDATES = ['Pending','In Progress','OpsNow Escalation','Waiting for support'];
   const statusFirstEntry = {};
   for (const history of sortedHistories) {
@@ -151,6 +151,13 @@ function transformIssue(issue) {
       if (item.field === 'status' && item.toString && OSC_CANDIDATES.includes(item.toString)) {
         if (!statusFirstEntry[item.toString]) statusFirstEntry[item.toString] = history.created;
       }
+    }
+  }
+  const statusMins = {};
+  if (createdMs != null) {
+    for (const k in statusFirstEntry) {
+      const m = Math.round((new Date(statusFirstEntry[k]).getTime() - createdMs) / 60000);
+      if (m >= 0) statusMins[k] = m;
     }
   }
 
@@ -177,7 +184,7 @@ function transformIssue(issue) {
     reporter: f.reporter?.displayName || 'Unknown',
     created: f.created,
     resolved: f.resolutiondate,
-    firstResponseMins, statusFirstEntry,
+    firstResponseMins, statusMins,
     partner, labels, reopenCount, externalReopenCount, reopenEvents, extComments,
     jiraUrl: `https://${JIRA_DOMAIN}/browse/${key}`,
   };
@@ -244,7 +251,20 @@ export default async (req, context) => {
     catch (e) { status.wroteMetrics = false; status.metricsErr = e.message; }
     status.step = 'writing-tickets';
     await saveStatus();
-    try { await store.setJSON('tickets-raw', { tickets, cachedAt: result.cachedAt }); status.wroteTickets = true; }
+    // Slim projection for the filterable cache — drop the heaviest fields the re-aggregation
+    // doesn't need (summary, reporter) so the blob serializes without OOM-killing the function.
+    const slim = tickets.map(t => ({
+      key: t.key, projectKey: t.projectKey, status: t.status, statusCategory: t.statusCategory,
+      priority: t.priority, issueType: t.issueType, requestType: t.requestType,
+      assignee: t.assignee, created: t.created, resolved: t.resolved,
+      partner: t.partner, labels: t.labels,
+      reopenCount: t.reopenCount, externalReopenCount: t.externalReopenCount, reopenEvents: t.reopenEvents,
+      firstResponseMins: t.firstResponseMins, statusMins: t.statusMins,
+      extComments: t.extComments, jiraUrl: t.jiraUrl,
+    }));
+    status.slimCount = slim.length;
+    await saveStatus();
+    try { await store.setJSON('tickets-raw', { tickets: slim, cachedAt: result.cachedAt }); status.wroteTickets = true; }
     catch (e) { status.wroteTickets = false; status.ticketsErr = e.message; }
 
     status.step = 'done';
