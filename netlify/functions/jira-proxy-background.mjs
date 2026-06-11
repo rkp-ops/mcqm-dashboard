@@ -126,12 +126,43 @@ function transformIssue(issue) {
   const externalReopenCount = reopenEvents.filter(e => e.externalTrigger).length;
 
   const extComments = comments.filter(c => !c.isInternal).map(c => ({ dt: c.created, author: c.author, email: c.email }));
+
+  // First agent reply: earliest PUBLIC comment by a genuine @steadymd.com human (not automation, not customer).
+  // Defines "first response time" — measured only on tickets that actually received an agent reply.
+  const createdMs = f.created ? new Date(f.created).getTime() : null;
+  const isStaffHuman = (email) => !!email && email.toLowerCase().endsWith('@steadymd.com');
+  let firstAgentReplyAt = null;
+  comments.forEach(c => {
+    if (c.isInternal) return;               // public-facing replies only
+    if (!isStaffHuman(c.email)) return;     // agent (not customer, not automation)
+    const t = new Date(c.created).getTime();
+    if (createdMs != null && t < createdMs) return;
+    if (firstAgentReplyAt === null || t < firstAgentReplyAt) firstAgentReplyAt = t;
+  });
+  const firstResponseMins = (firstAgentReplyAt != null && createdMs != null)
+    ? Math.round((firstAgentReplyAt - createdMs) / 60000) : null;
+
+  // First-entry timestamp into each workflow status (from changelog) — powers "our-side-complete" timing
+  // for whichever status Ops confirms represents hand-off to the clinical queue.
+  const statusFirstEntry = {};
+  for (const history of sortedHistories) {
+    for (const item of history.items || []) {
+      if (item.field === 'status' && item.toString) {
+        if (!statusFirstEntry[item.toString]) statusFirstEntry[item.toString] = history.created;
+      }
+    }
+  }
+
   const labels = (f.labels || []);
   const components = (f.components || []).map(c => c.name || '');
   // Partner comes from the custom "Partner" dropdown field (customfield_10942)
   // Falls back to Components if the custom field is empty
   const partnerField = f.customfield_10942;
   const partner = (partnerField && partnerField.value) ? partnerField.value : (components[0] || '');
+
+  // Request Type (JSM customer request type, customfield_10601) — the real category dimension.
+  const rt = f.customfield_10601;
+  const requestType = rt ? (rt.requestType?.name || rt.value || rt.name || '') : '';
 
   return {
     key, projectKey,
@@ -140,10 +171,12 @@ function transformIssue(issue) {
     statusCategory: f.status?.statusCategory?.name || 'Unknown',
     priority: f.priority?.name || 'None',
     issueType: f.issuetype?.name || 'Unknown',
+    requestType,
     assignee: f.assignee?.displayName || 'Unassigned',
     reporter: f.reporter?.displayName || 'Unknown',
     created: f.created,
     resolved: f.resolutiondate,
+    firstResponseMins, statusFirstEntry,
     partner, labels, reopenCount, externalReopenCount, reopenEvents, extComments,
     jiraUrl: `https://${JIRA_DOMAIN}/browse/${key}`,
   };
@@ -168,6 +201,7 @@ export default async (req, context) => {
       'summary','status','priority','assignee','reporter','created','updated',
       'issuetype','labels','components','comment','resolution','resolutiondate',
       'customfield_10942', // Partner dropdown
+      'customfield_10601', // Request Type (JSM customer request type) — category dimension
     ];
 
     // Fetch per-project in parallel for speed

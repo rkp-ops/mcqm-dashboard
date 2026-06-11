@@ -4,7 +4,21 @@ export function med(a) { if(!a.length) return 0; const s=[...a].sort((x,y)=>x-y)
 export function ptl(a,p) { if(!a.length) return 0; const s=[...a].sort((x,y)=>x-y); const i=(p/100)*(s.length-1); const l=Math.floor(i),h=Math.ceil(i); return l===h?s[l]:s[l]+(s[h]-s[l])*(i-l); }
 export function r1(n) { return Math.round(n*10)/10; }
 
-export function computeMetrics(tickets) {
+// Count business-day boundaries between two dates (same calendar day = 0, next business day = 1).
+function bizDayDiff(a, b) {
+  if (!a || !b || b < a) return 0;
+  let d = new Date(a.getFullYear(), a.getMonth(), a.getDate());
+  const end = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+  let count = 0;
+  while (d < end) {
+    d.setDate(d.getDate() + 1);
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) count++;
+  }
+  return count;
+}
+
+export function computeMetrics(tickets, opts = {}) {
   const now = new Date();
   const d60 = new Date(now - 60 * 86400000);
   const d90 = new Date(now - 90 * 86400000);
@@ -242,9 +256,86 @@ export function computeMetrics(tickets) {
     jiraUrl: t.jiraUrl,
   })).sort((a,b) => b.ageDays - a.ageDays);
 
+  // ============ PARTNER PERFORMANCE SNAPSHOT aggregations ============
+  // Category = Request Type (customfield_10601), a real populated field.
+  const withCategory = tickets.filter(t => t.requestType);
+  const catVolMap = {};
+  withCategory.forEach(t => { catVolMap[t.requestType] = (catVolMap[t.requestType] || 0) + 1; });
+  const categoryVolume = Object.entries(catVolMap).sort((a,b)=>b[1]-a[1]).map(([category,n])=>({category,tickets:n}));
+  const catCT = {};
+  resolved.forEach(t => { if(!t.requestType) return; (catCT[t.requestType]=catCT[t.requestType]||[]).push((new Date(t.resolved)-new Date(t.created))/36e5); });
+  const categoryResolution = Object.entries(catCT).sort((a,b)=>b[1].length-a[1].length)
+    .map(([category,c])=>({category,tickets:c.length,medianHrs:r1(med(c)),p75Hrs:r1(ptl(c,75))}));
+
+  // First response time (minutes) — only tickets that received a public agent reply.
+  const frMins = tickets.map(t=>t.firstResponseMins).filter(v=>typeof v==='number' && v>=0);
+  const frB = [{l:'<15m',x:15},{l:'15-30m',x:30},{l:'30-60m',x:60},{l:'1-2h',x:120},{l:'2-4h',x:240},{l:'4-8h',x:480},{l:'8-24h',x:1440},{l:'24h+',x:1e12}];
+  const frDist = frB.map(b=>({bucket:b.l,tickets:0}));
+  frMins.forEach(m=>{for(let i=0;i<frB.length;i++) if(m<=frB[i].x){frDist[i].tickets++;break;}});
+  const frTarget = opts.firstResponseTargetMins != null ? Number(opts.firstResponseTargetMins) : null;
+  const firstResponse = {
+    measuredCount: frMins.length,
+    coveragePct: total>0 ? r1(frMins.length/total*100) : 0,
+    medianMins: frMins.length ? r1(med(frMins)) : null,
+    p75Mins: frMins.length ? r1(ptl(frMins,75)) : null,
+    dist: frDist,
+    targetMins: frTarget,
+    withinTargetPct: (frTarget && frMins.length) ? r1(frMins.filter(m=>m<=frTarget).length/frMins.length*100) : null,
+  };
+
+  // Resolution-fix SLA — percent resolved within N business days (lenient, clinically owned target).
+  const resTargetBizDays = opts.resolutionTargetBizDays != null ? Number(opts.resolutionTargetBizDays) : 1;
+  const withinRes = resolved.filter(t => bizDayDiff(new Date(t.created), new Date(t.resolved)) <= resTargetBizDays).length;
+  const resolutionSla = {
+    resolvedCount: resolved.length,
+    targetBizDays: resTargetBizDays,
+    withinTargetPct: resolved.length ? r1(withinRes/resolved.length*100) : null,
+    definition: `Resolved within ${resTargetBizDays} business day(s) of creation`,
+  };
+
+  // Our-side-complete SLA (tight, Ops-controlled) — time to the confirmed hand-off status. Null until Ops names it.
+  const oscStatus = opts.ourSideCompleteStatus || null;
+  let ourSideComplete = null;
+  if (oscStatus) {
+    const oscMins = tickets.map(t => {
+      const at = t.statusFirstEntry && t.statusFirstEntry[oscStatus];
+      if (!at || !t.created) return null;
+      return (new Date(at) - new Date(t.created)) / 60000;
+    }).filter(v => typeof v === 'number' && v >= 0);
+    const oscTarget = opts.ourSideCompleteTargetMins != null ? Number(opts.ourSideCompleteTargetMins) : null;
+    ourSideComplete = {
+      status: oscStatus,
+      measuredCount: oscMins.length,
+      coveragePct: total>0 ? r1(oscMins.length/total*100) : 0,
+      medianMins: oscMins.length ? r1(med(oscMins)) : null,
+      p75Mins: oscMins.length ? r1(ptl(oscMins,75)) : null,
+      targetMins: oscTarget,
+      withinTargetPct: (oscTarget && oscMins.length) ? r1(oscMins.filter(m=>m<=oscTarget).length/oscMins.length*100) : null,
+    };
+  }
+
+  // Lane = project (never person-level).
+  const laneNames = { MCQM:'Patient Support', PSS:'Partner Support', FHPS:'FHPS', OAC:'OAC' };
+  const laneVolume = Object.entries(pkC).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({lane:k,label:laneNames[k]||k,tickets:v}));
+
+  const snapshot = {
+    categoryAvailable: categoryVolume.length > 0,
+    categoryCoveragePct: total>0 ? r1(withCategory.length/total*100) : 0,
+    categoryVolume,
+    categoryResolution,
+    firstResponse,
+    resolutionSla,
+    ourSideComplete,
+    laneVolume,
+    partnerCoveragePct: total>0 ? r1(tickets.filter(t=>t.partner).length/total*100) : 0,
+    reopenRatePct: resolved.length ? r1(everReopenedCount/resolved.length*100) : 0,
+    statusVocabulary: Object.keys(statusCounts),
+  };
+
   return {
     computed: true,
     cachedAt: now.toISOString(),
+    snapshot,
     summary: {
       totalTickets: total, totalRows: total, projectKeys: pkC, dateRange,
       resolvedCount: resolved.length, openCount, reopenedSnapshot: reopenedTix.length,
@@ -266,13 +357,21 @@ export function computeMetrics(tickets) {
   };
 }
 
-// Filter tickets by date range + project list
-export function filterTickets(tickets, { from, to, projects }) {
+// Filter tickets by date range + project list + partner + category
+export function filterTickets(tickets, { from, to, projects, partner, category }) {
   let result = tickets;
 
   if (projects && projects.length > 0) {
     const projSet = new Set(projects);
     result = result.filter(t => projSet.has(t.projectKey));
+  }
+
+  if (partner) {
+    result = result.filter(t => t.partner === partner);
+  }
+
+  if (category) {
+    result = result.filter(t => t.requestType === category);
   }
 
   if (from || to) {

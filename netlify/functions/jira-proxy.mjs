@@ -13,7 +13,15 @@ export default async (req, context) => {
     const to = url.searchParams.get('to');
     const projectsParam = url.searchParams.get('projects');
     const projects = projectsParam ? projectsParam.split(',').map(s => s.trim()).filter(Boolean) : null;
-    const isFiltered = Boolean(from || to || (projects && projects.length > 0 && projects.length < 4));
+    const partner = url.searchParams.get('partner') || null;
+    const category = url.searchParams.get('category') || null;
+    // Snapshot target/config params (no rebuild needed to change these)
+    const computeOpts = {};
+    if (url.searchParams.get('osc')) computeOpts.ourSideCompleteStatus = url.searchParams.get('osc');
+    if (url.searchParams.get('oscTarget')) computeOpts.ourSideCompleteTargetMins = url.searchParams.get('oscTarget');
+    if (url.searchParams.get('frTarget')) computeOpts.firstResponseTargetMins = url.searchParams.get('frTarget');
+    if (url.searchParams.get('resBizDays')) computeOpts.resolutionTargetBizDays = url.searchParams.get('resBizDays');
+    const isFiltered = Boolean(from || to || partner || category || (projects && projects.length > 0 && projects.length < 4));
 
     const store = getStore('jira-cache');
 
@@ -51,10 +59,10 @@ export default async (req, context) => {
         }), { status: 202, headers: corsHeaders() });
       }
 
-      const filtered = filterTickets(raw.tickets, { from, to, projects });
-      const result = computeMetrics(filtered);
+      const filtered = filterTickets(raw.tickets, { from, to, projects, partner, category });
+      const result = computeMetrics(filtered, computeOpts);
       result.filtered = true;
-      result.filterApplied = { from: from || null, to: to || null, projects: projects || null };
+      result.filterApplied = { from: from || null, to: to || null, projects: projects || null, partner: partner || null, category: category || null };
       return new Response(JSON.stringify(result), {
         status: 200,
         headers: corsHeaders(),
